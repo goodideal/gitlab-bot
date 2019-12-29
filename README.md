@@ -5,21 +5,27 @@
 具体见下图：
 
 Gitlab push 代码推送
+
 ![alt gitlab-push-msg-1](./docs/gitlab-push-msg-1.png)
 
 Gitlab push 新建分支
+
 ![alt gitlab-push-msg-2](./docs/gitlab-push-msg-2.png)
 
 Gitlab push 删除分支
+
 ![alt gitlab-push-msg-3](./docs/gitlab-push-msg-3.png)
 
 Gitlab push tag 推标签
+
 ![alt gitlab-push-tag-msg-1](./docs/gitlab-push-tag-msg-1.png)
 
 Gitlab merge request 合并请求
+
 ![alt gitlab-mr-msg-1](./docs/gitlab-mr-msg-1.png)
 
 Gitlab pipeline 流水线
+
 ![alt gitlab-pipeline-msg](./docs/gitlab-pipeline-msg-1.png)
 
 ## 与企业微信对接
