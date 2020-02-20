@@ -13,7 +13,7 @@ const OBJECT_KIND = {
   merge_request: 'merge_request',
   wiki_page: 'wiki_page', // todo
   pipeline: 'pipeline',
-  build: 'build',
+  build: 'build', // todo
 }
 
 const REDIS_KEY = {
@@ -60,6 +60,18 @@ class WebhookService extends Service {
 
       case OBJECT_KIND.tag_push:
         res = await this.assembleTagPushMsq(content, data)
+        break;
+      case OBJECT_KIND.issue:
+        res = await this.assembleIssueMsq(content, data);
+        break;
+      case OBJECT_KIND.wiki_page:
+        res = await this.assembleWikiPageMsq(content, data);
+        break;
+      case OBJECT_KIND.note:
+        res =  await this.assembleNoteMsq(content, data);
+        break;
+      default:
+        res = false;
         break;
     }
     if (!res) return false
@@ -127,10 +139,11 @@ class WebhookService extends Service {
         sourceString = '网页运行'
         break
       default:
-        sourceString = `操作(${source})`
+        // gitlab 11.3 未支持source参数
+        sourceString = `${name}`
     }
 
-    content.push(`[[#${pipelineId}流水线](${pipelineUrl})] <font color="${statusColor}">${statusString}</font>，位于${ref}分支，由${sourceString}触发。`)
+    content.push(`[[#${pipelineId}流水线](${pipelineUrl})] <font color="${statusColor}">${statusString}</font>，位于${ref}分支，由<font color="info">${sourceString}</font>触发。`)
     content.push(`> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`)
     content.push('**流水线详情：**\n')
 
@@ -207,6 +220,149 @@ class WebhookService extends Service {
     return content
   }
 
+  async assembleIssueMsq(content, { user, project, repository, object_attributes, assignees, assignee, labels }) {
+    const { id: issueId, title, state, action, description, url: issueUrl } = object_attributes || {};
+    const { name: projName, web_url, path_with_namespace } = project || {};
+    const { name, username } = user || {};
+
+    const { statusColor, statusString } = this.formatStatus(state);
+
+    content.push(`[[#${issueId}议题](${issueUrl})] 状态:<font color="${statusColor}">${statusString}</font>，由<font color="info">${name}</font>触发。`);
+    content.push(`> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`);
+
+    content.push('**议题详情：**\n');
+
+    name && content.push(this.generateListItem('操作人', `\`${name}\``));
+
+    content.push(this.generateListItem('标题', title, issueUrl));
+
+
+    let descriptios = [];
+
+    if (description) {
+      descriptios = description.split('\n');
+    }
+    content.push(this.generateListItem('议题描述', ' '));
+    for (let index = 0; index < descriptios.length; index++) {
+      const element = descriptios[index];
+      content.push(`> ${element}`); 
+    }
+
+
+
+    action && content.push(this.generateListItem('动作', `\`${action}\``));
+
+    content.push(this.generateListItem('责任人', assignees.length > 0 ? assignees[0].name : '无'));
+
+    // let relatedusers = [];
+
+    // if (assignees) {
+    //   for (let index = 0; index < assignees.length; index++) {
+    //     relatedusers.push(assignees[index].name);
+    //   }
+    // }
+
+    // content.push(this.generateListItem('参与人', relatedusers.join(',')));
+
+    let labelsStr = [];
+
+    if (labels) {
+      for (let index = 0; index < labels.length; index++) {
+        labelsStr.push(labels[index].title); 
+      }
+    }
+
+    content.push(this.generateListItem('标签', '<font color="info">'+ labelsStr.join(',')+'</font>'));
+
+    return content;
+
+  }
+
+
+  async assembleWikiPageMsq(content, { user, project, wiki, object_attributes }) {
+    const { name: projName, web_url, path_with_namespace } = project || {};
+    const { name, username } = user || {};
+    const { title, message, action, url: wiki_url } = object_attributes || {};
+
+    content.push(`[**WIKI**] [标题:${title}](${wiki_url})，由<font color="info">${name}</font>触发。`);
+    content.push(`> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`);
+
+    content.push('**WIKI详情：**\n');
+
+    name && content.push(this.generateListItem('操作人', `\`${name}\``));
+
+    content.push(this.generateListItem('标题', title, wiki_url));
+    content.push(this.generateListItem('信息', message || '无'));
+
+
+    action && content.push(this.generateListItem('动作', `\`${action}\``));
+
+    return content;
+
+
+  }
+
+  async assembleNoteMsq(content, data) {
+    const { object_attributes } = data || {};
+    if (object_attributes) {
+      const { noteable_type } = object_attributes || {};
+      switch (noteable_type) {
+        case 'Issue':
+          return this.assembleIssueNoteMsq(content, data);
+          break;
+        default:
+          return false;
+          break;
+      }
+    } else {
+      return false;
+    }
+
+  }
+
+  async assembleIssueNoteMsq(content, { user, project, object_attributes, issue}) {
+    const { id: issueNoteId,  url: issueNoteUrl, note } = object_attributes || {};
+    const { title, state, description } = issue || {};
+    const { name: projName, web_url, path_with_namespace } = project || {};
+    const { name, username } = user || {};
+
+    const { statusColor, statusString } = this.formatStatus(state);
+
+    content.push(`[[#${issueNoteId}议题笔记](${issueNoteUrl})] 议题状态:<font color="${statusColor}">${statusString}</font>，所属议题:[${title}](${issueNoteUrl})，由<font color="info">${name}</font>触发。`);
+    content.push(`> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`);
+
+    content.push('**议题笔记详情：**\n');
+
+    name && content.push(this.generateListItem('操作人', `\`${name}\``));
+
+    content.push(this.generateListItem('议题标题', title, issueNoteUrl));
+
+    let descriptios = [];
+
+    if (description) {
+      descriptios = description.split('\n');
+    }
+    content.push(this.generateListItem('议题描述', ' '));
+    for (let index = 0; index < descriptios.length; index++) {
+      const element = descriptios[index];
+      content.push(`> ${element}`); 
+    }
+    
+
+    let notes = [];
+
+    if (note) {
+      notes = note.split('\n');
+    }
+    content.push(this.generateListItem('笔记内容', ' '));
+    for (let index = 0; index < notes.length; index++) {
+        const element = notes[index];
+        content.push(`> ${element}`); 
+    }
+
+    return content;
+  }
+
   formatDuration(duration) {
     if (duration < 60) return duration + '秒'
     if (duration < 3600) return Math.round(duration / 60 - 0.5) + '分' + (duration % 60) + '秒'
@@ -250,6 +406,14 @@ class WebhookService extends Service {
         break
       case 'manual':
         statusString = '需手动触发'
+        break
+      case 'opened':
+        statusColor = 'info'
+        statusString = '打开'
+        break
+      case 'closed':
+        statusColor = 'info'
+        statusString = '关闭'
         break
       default:
         statusString = `状态未知 (${status})`
