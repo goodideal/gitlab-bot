@@ -8,10 +8,10 @@ const S = require('string')
 const OBJECT_KIND = {
   push: 'push',
   tag_push: 'tag_push',
-  issue: 'issue', // todo
-  note: 'note', // todo
+  issue: 'issue', // 
+  note: 'note', // part to do
   merge_request: 'merge_request',
-  wiki_page: 'wiki_page', // todo
+  wiki_page: 'wiki_page', // 
   pipeline: 'pipeline',
   build: 'build', // todo
 }
@@ -254,16 +254,6 @@ class WebhookService extends Service {
 
     content.push(this.generateListItem('责任人', assignees.length > 0 ? assignees[0].name : '无'));
 
-    // let relatedusers = [];
-
-    // if (assignees) {
-    //   for (let index = 0; index < assignees.length; index++) {
-    //     relatedusers.push(assignees[index].name);
-    //   }
-    // }
-
-    // content.push(this.generateListItem('参与人', relatedusers.join(',')));
-
     let labelsStr = [];
 
     if (labels) {
@@ -370,6 +360,7 @@ class WebhookService extends Service {
   }
 
   formatBuilds(builds, username, web_url) {
+    builds.reverse();
     return builds.map(build => {
       const { id, name, stage, user } = build
       const { statusColor, statusString } = this.formatStatus(build.status)
@@ -377,6 +368,12 @@ class WebhookService extends Service {
       const byWho = (username === user.username ? '' : `，由\`${user.name}\`触发`)
       return `\`${stage}\`: [\`${name}\`](${buildUrl}) > <font color="${statusColor}">${statusString}</font>${byWho}`
     })
+  }
+
+  formatDescription(description) {
+    let descriptions = [];
+
+    return descriptions;
   }
 
   formatStatus(status) {
