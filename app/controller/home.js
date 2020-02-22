@@ -15,7 +15,7 @@ class HomeController extends Controller {
 
     if (!message) {
       ctx.logger.info('====> message is empty, suppressed.')
-      ctx.body = { msg: 'message is empty, suppressed.' }
+      ctx.body = { msg: 'message is empty or not supported, suppressed.' }
       return 
     }
 
