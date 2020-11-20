@@ -220,7 +220,7 @@ class WebhookService extends Service {
     return content
   }
 
-  async assembleIssueMsq(content, { user, project, repository, object_attributes, assignees, assignee, labels }) {
+  async assembleIssueMsq(content, { user, project, repository, object_attributes, assignees = [], assignee, labels }) {
     const { id: issueId, title, state, action, description, url: issueUrl } = object_attributes || {};
     const { name: projName, web_url, path_with_namespace } = project || {};
     const { name, username } = user || {};
