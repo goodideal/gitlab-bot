@@ -248,11 +248,12 @@ class WebhookService extends Service {
       content.push(`> ${element}`); 
     }
 
-
-
     action && content.push(this.generateListItem('动作', `\`${action}\``));
 
-    let responsible = assignees.length > 0 ? assignees[0].name : '无';
+    let responsible = '无';
+    if (assignees && assignees.length) {
+      responsible = assignees[0].name;
+    }
 
     content.push(this.generateListItem('责任人', `\`${responsible}\``));
 
