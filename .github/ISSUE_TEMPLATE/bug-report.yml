@@ -1,6 +1,6 @@
 name: Bug report
-title: "[Bug] [Module Name] Bug title "
-description: Problems and issues with code of Apache Dolphinscheduler
+title: "[Bug] Bug title "
+description: Problems and issues with code of gitlab-bot
 labels: [ "bug", "Waiting for reply" ]
 body:
   - type: textarea
@@ -29,8 +29,7 @@ body:
     attributes:
       label: How to reproduce
       description: >
-        What should we do to reproduce the problem? If you are not able to provide a reproducible case,
-        please open a [Discussion](https://github.com/apache/dolphinscheduler/discussions) instead.
+        What should we do to reproduce the problem? If you are not able to provide a reproducible case.
       placeholder: >
         Please make sure you provide a reproducible step-by-step case of how to reproduce the problem
         as minimally and precisely as possible. Keep in mind we do not have access to your deployment.
@@ -48,17 +47,6 @@ body:
         Any relevant logs to include? Put them here inside fenced
         ``` ``` blocks or inside a collapsable details tag if it's too long:
         <details><summary>x.log</summary> lots of stuff </details>
-
-  - type: checkboxes
-    attributes:
-      label: Code of Conduct
-      description: |
-        The Code of Conduct helps create a safe space for everyone. We require that everyone agrees to it.
-      options:
-        - label: >
-            I agree to follow this project's
-            [Code of Conduct](https://www.apache.org/foundation/policies/conduct)
-          required: true
 
   - type: markdown
     attributes:
