@@ -34,10 +34,10 @@ module.exports = appInfo => {
 > 项目 [[{{{projName}}} | {{{path_with_namespace}}}]({{{web_url}}})]
 {{{#total_commits_count}}}
 **共提交{{{total_commits_count}}}次：**
-{{{/total_commits_count}}}
-{{{#commits}}}
->{{{label}}} [{{{text}}}]{{#url}}({{{url}}}){{/url}}
-{{{/commits}}}`,
+> {{{/total_commits_count}}}
+{{#commits}}
+> {{{author.name}}} [{{message}}]({{{url}}})
+{{/commits}}`,
     },
   };
 

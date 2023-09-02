@@ -122,7 +122,7 @@ class WebhookService extends Service {
     // total_commits_count &&
     //   content.push(this.generateListItem('', this.formatCommits(commits).text));
 
-    this.logger.info('template: ', template);
+    this.logger.info('template: ', template.push);
     this.logger.info('content: ', content);
     const push = Mustache.render(template.push, {
       user_name,
@@ -132,7 +132,7 @@ class WebhookService extends Service {
       web_url,
       projName,
       total_commits_count,
-      commits: this.generateListItem('', this.formatCommits(commits).text),
+      commits,
     });
 
     return content.push(push);
