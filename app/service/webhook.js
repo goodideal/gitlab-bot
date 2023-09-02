@@ -4,6 +4,7 @@ const Service = require('egg').Service;
 const _ = require('lodash');
 const moment = require('moment');
 const S = require('string');
+const Mustache = require('mustache');
 
 const OBJECT_KIND = {
   push: 'push',
@@ -83,9 +84,17 @@ class WebhookService extends Service {
 
   async assemblePushMsg(
     content,
-    { user_name, ref, project, commits, total_commits_count, before, after }
+    {
+      user_name,
+      ref,
+      project = {},
+      commits,
+      total_commits_count,
+      before,
+      after,
+    }
   ) {
-    const { name: projName, web_url, path_with_namespace } = project || {};
+    const { name: projName, web_url, path_with_namespace } = project;
 
     const branch = ref.replace('refs/heads/', '');
     let op = '';
@@ -100,18 +109,33 @@ class WebhookService extends Service {
       op = '将代码推至';
     }
 
-    content.push(
-      `\`${user_name}\`${op}[[${path_with_namespace}/${branch}](${web_url}/tree/${branch})]。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
-    total_commits_count &&
-      content.push(`**共提交${total_commits_count}次：**\n`);
-    total_commits_count &&
-      content.push(this.generateListItem('', this.formatCommits(commits).text));
+    const { template } = this.config;
 
-    return content;
+    // content.push(
+    //   `\`${user_name}\`${op}[[${path_with_namespace}/${branch}](${web_url}/tree/${branch})]。`
+    // );
+    // content.push(
+    //   `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
+    // );
+    // total_commits_count &&
+    //   content.push(`**共提交${total_commits_count}次：**\n`);
+    // total_commits_count &&
+    //   content.push(this.generateListItem('', this.formatCommits(commits).text));
+
+    this.logger.info('template: ', template);
+    this.logger.info('content: ', content);
+    const push = Mustache.render(template.push, {
+      user_name,
+      op,
+      path_with_namespace,
+      branch,
+      web_url,
+      projName,
+      total_commits_count,
+      commits: this.generateListItem('', this.formatCommits(commits).text),
+    });
+
+    return content.push(push);
   }
 
   async assemblePipelineMsg(
@@ -591,12 +615,11 @@ class WebhookService extends Service {
 
   generateListItem(label, text, url) {
     if (label) label = label + ':';
-
-    if (url) {
-      return `>${label} [${text}](${url})`;
-    } else {
-      return `>${label} ${text}`;
-    }
+    return Mustache.render(this.config.template.list, {
+      label,
+      text,
+      url,
+    });
   }
 }
 

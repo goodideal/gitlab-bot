@@ -7,9 +7,10 @@ class HomeController extends Controller {
   async index() {
     const { ctx } = this;
     const { path = '' } = ctx.params;
-
     const webhookUrl =
       process.env['WEBHOOK_URL' + (path ? '_' + path.toUpperCase() : '')];
+
+    this.logger.debug('webhookUrl', webhookUrl);
 
     this.logger.info('request body: ', ctx.request.body);
     const message = await ctx.service.webhook.translateMsg(ctx.request.body);
