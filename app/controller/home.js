@@ -1,31 +1,31 @@
 'use strict';
 
 const Controller = require('egg').Controller;
-const S = require('string')
+const S = require('string');
 
 class HomeController extends Controller {
   async index() {
     const { ctx } = this;
-    const { path = '' } = ctx.params
+    const { path = '' } = ctx.params;
 
-    const webhookUrl = process.env['WEBHOOK_URL' + (path ? '_' + path.toUpperCase() : '')];
+    const webhookUrl =
+      process.env['WEBHOOK_URL' + (path ? '_' + path.toUpperCase() : '')];
 
-    ctx.logger.info('request body: ', ctx.request.body);
+    this.logger.info('request body: ', ctx.request.body);
     const message = await ctx.service.webhook.translateMsg(ctx.request.body);
 
     if (!message) {
-      ctx.logger.info('====> message is empty, suppressed.')
-      ctx.body = { msg: 'message is empty or not supported, suppressed.' }
-      return 
+      this.logger.info('====> message is empty, suppressed.');
+      ctx.body = { msg: 'message is empty or not supported, suppressed.' };
+      return;
     }
 
-
     if (!webhookUrl) {
-      ctx.logger.error('webhook url error, webhookUrl: ' + webhookUrl);
+      this.logger.error('webhook url error, webhookUrl: ' + webhookUrl);
       ctx.body = {
         error: 'webhook url error, webhookUrl: ' + webhookUrl,
       };
-      return
+      return;
     }
 
     const result = await ctx.curl(webhookUrl, {
@@ -49,7 +49,7 @@ class HomeController extends Controller {
       package: result.data,
     };
 
-    ctx.logger.info('response body: ', ctx.body);
+    this.logger.info('response body: ', ctx.body);
   }
 }
 
