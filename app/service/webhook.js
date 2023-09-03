@@ -94,43 +94,29 @@ class WebhookService extends Service {
       after,
     }
   ) {
-    const { name: projName, web_url, path_with_namespace } = project;
-
     const branch = ref.replace('refs/heads/', '');
-    let op = '';
+    let GB_op = '';
     if (before === '0000000000000000000000000000000000000000') {
       // new branch
-      op = '新建分支';
+      GB_op = '新建分支';
     } else if (after === '0000000000000000000000000000000000000000') {
       // remove brance
-      op = '删除分支';
+      GB_op = '删除分支';
     } else {
       // others
-      op = '将代码推至';
+      GB_op = '将代码推至';
     }
 
-    const { template } = this.config;
+    const template = this.getTemplateByPlatform('qywx');
 
-    // content.push(
-    //   `\`${user_name}\`${op}[[${path_with_namespace}/${branch}](${web_url}/tree/${branch})]。`
-    // );
-    // content.push(
-    //   `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    // );
-    // total_commits_count &&
-    //   content.push(`**共提交${total_commits_count}次：**\n`);
-    // total_commits_count &&
-    //   content.push(this.generateListItem('', this.formatCommits(commits).text));
+    this.logger.debug('template: ', template.push);
+    this.logger.debug('content: ', content);
 
-    this.logger.info('template: ', template.push);
-    this.logger.info('content: ', content);
     const push = Mustache.render(template.push, {
+      project,
       user_name,
-      op,
-      path_with_namespace,
+      op: GB_op,
       branch,
-      web_url,
-      projName,
       total_commits_count,
       commits,
     });
@@ -140,7 +126,7 @@ class WebhookService extends Service {
 
   async assemblePipelineMsg(
     content,
-    { object_attributes, merge_request: mr, user, project, commit, builds }
+    { object_attributes = {}, merge_request: mr, user, project, commit, builds }
   ) {
     const {
       id: pipelineId,
@@ -149,7 +135,7 @@ class WebhookService extends Service {
       duration,
       source,
       stages,
-    } = object_attributes || {};
+    } = object_attributes;
     const { name: projName, web_url, path_with_namespace } = project || {};
     const { name, username } = user || {};
     const pipelineUrl = web_url + '/pipelines/' + pipelineId;
@@ -167,26 +153,35 @@ class WebhookService extends Service {
       return false;
     }
 
-    const { statusColor, statusString } = this.formatStatus(status);
+    const { statusColor: GB_statusColor, statusString: GB_statusString } = this.formatStatus(status);
 
-    let sourceString;
+    let GB_sourceString;
     switch (source) {
       case 'push':
-        sourceString = '推送操作';
+        GB_sourceString = '推送操作';
         break;
       case 'merge_request_event':
-        sourceString = '合并操作';
+        GB_sourceString = '合并操作';
         break;
       case 'web':
-        sourceString = '网页运行';
+        GB_sourceString = '网页运行';
         break;
       default:
         // gitlab 11.3 未支持source参数
-        sourceString = `${name}`;
+        GB_sourceString = `${name}`;
     }
+    const template = this.getTemplateByPlatform('qywx');
+    const pipeline = Mustache.render(template.pipeline, {
+      project,
+      user_name,
+      op,
+      branch,
+      total_commits_count,
+      commits,
+    });
 
     content.push(
-      `[[#${pipelineId}流水线](${pipelineUrl})] <font color="${statusColor}">${statusString}</font>，位于${ref}分支，由<font color="info">${sourceString}</font>触发。`
+      `[[#${pipelineId}流水线](${pipelineUrl})] <font color="${GB_statusColor}">${GB_statusString}</font>，位于${ref}分支，由<font color="info">${GB_sourceString}</font>触发。`
     );
     content.push(
       `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
@@ -525,10 +520,10 @@ class WebhookService extends Service {
     return builds.map(build => {
       const { id, name, stage, user } = build;
       const { statusColor, statusString } = this.formatStatus(build.status);
-      const buildUrl = web_url + '/-/jobs/' + id;
+      const GB_buildUrl = web_url + '/-/jobs/' + id;
       const byWho =
         username === user.username ? '' : `，由\`${user.name}\`触发`;
-      return `\`${stage}\`: [\`${name}\`](${buildUrl}) > <font color="${statusColor}">${statusString}</font>${byWho}`;
+      return `\`${stage}\`: [\`${name}\`](${GB_buildUrl}) > <font color="${statusColor}">${statusString}</font>${byWho}`;
     });
   }
 
@@ -615,11 +610,22 @@ class WebhookService extends Service {
 
   generateListItem(label, text, url) {
     if (label) label = label + ':';
-    return Mustache.render(this.config.template.list, {
-      label,
-      text,
-      url,
-    });
+    if (url) {
+      return `>${label} [${text}](${url})`;
+    } else {
+      return `>${label} ${text}`;
+    }
+  }
+
+  getTemplateByPlatform(platform) {
+    const { template } = this.config;
+
+    if (!template[platform]) {
+      this.logger.error(`can't find ${platform} in template`);
+      return template.default;
+    }
+
+    return template[platform];
   }
 }
 
