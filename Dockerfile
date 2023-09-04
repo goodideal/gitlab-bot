@@ -13,7 +13,7 @@ COPY package.json package-lock.json
 
 RUN \
   npm config set registry https://registry.npmmirror.com/ \
-  && npm i --no-audit --no-fund --production
+  && npm i --no-audit --no-fund --omit=dev
 
 EXPOSE 7001
 
