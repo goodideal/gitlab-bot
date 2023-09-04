@@ -38,6 +38,7 @@ const REDIS_VAL = {
   },
 };
 
+// all customized variables start with GB_
 class WebhookService extends Service {
   async translateMsg(data) {
     const { object_kind } = data || {};
@@ -90,7 +91,7 @@ class WebhookService extends Service {
       user_name,
       ref,
       project = {},
-      commits,
+      commits = {},
       total_commits_count,
       before,
       after,
@@ -121,6 +122,7 @@ class WebhookService extends Service {
       branch,
       total_commits_count,
       commits,
+      GB_changes: this.formatCommits(commits).changes
     });
 
     return content.push(push);
@@ -463,25 +465,6 @@ class WebhookService extends Service {
     }
 
     return content;
-  }
-
-  formatDuration(duration) {
-    if (duration < 60) return duration + '秒';
-    if (duration < 3600)
-      return Math.round(duration / 60 - 0.5) + '分' + (duration % 60) + '秒';
-    return duration + '秒';
-  }
-
-  formatBuilds(builds, username, web_url) {
-    builds.reverse();
-    return builds.map(build => {
-      const { id, name, stage, user } = build;
-      const { statusColor, statusString } = this.formatStatus(build.status);
-      const GB_buildUrl = web_url + '/-/jobs/' + id;
-      const byWho =
-        username === user.username ? '' : `，由\`${user.name}\`触发`;
-      return `\`${stage}\`: [\`${name}\`](${GB_buildUrl}) > <font color="${statusColor}">${statusString}</font>${byWho}`;
-    });
   }
 
   formatDescription(description) {
