@@ -70,7 +70,7 @@ module.exports = appInfo => {
 `,
 
         merge_request:
-`{{GB_stateAction}} : \`{{user.name}}\`**{{GB_stateString}}{{#object_attributes}}**[[#{{iid}}合并请求 {{title}}]({{iid}})]，从\`{{source_branch}}\`合并至\`{{target_branch}}\`{{/object_attributes}}
+`{{#GB_stateAction}}{{GB_stateAction}} :{{/GB_stateAction}}\`{{user.name}}\`**{{GB_stateString}}{{#object_attributes}}**[[#{{iid}}合并请求 {{title}}]({{iid}})]，从\`{{source_branch}}\`合并至\`{{target_branch}}\`{{/object_attributes}}
 > **MR详情:**
 > 提交时间: {{GB_updated_at}}
 > 提交详情: 
