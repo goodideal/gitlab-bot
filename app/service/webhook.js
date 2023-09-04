@@ -2,9 +2,11 @@
 
 const Service = require('egg').Service;
 const _ = require('lodash');
-const moment = require('moment');
 const S = require('string');
+const moment = require('moment');
 const Mustache = require('mustache');
+
+moment.locale('zh-cn');
 
 const OBJECT_KIND = {
   push: 'push',
@@ -126,19 +128,19 @@ class WebhookService extends Service {
 
   async assemblePipelineMsg(
     content,
-    { object_attributes = {}, merge_request: mr, user, project, commit, builds }
+    { object_attributes = {}, merge_request: mr, user = {}, project = {}, commit, builds }
   ) {
     const {
-      id: pipelineId,
+      id: GB_pipelineId,
       ref,
       status,
       duration,
       source,
       stages,
     } = object_attributes;
-    const { name: projName, web_url, path_with_namespace } = project || {};
-    const { name, username } = user || {};
-    const pipelineUrl = web_url + '/pipelines/' + pipelineId;
+    const { name: GB_projName, web_url, path_with_namespace } = project;
+    const { name, username } = user;
+    const GB_pipelineUrl = web_url + '/pipelines/' + GB_pipelineId;
 
     // find any build not finished (success, failed, skipped)
     const createdBuilds = _.find(builds, { status: 'created' });
@@ -172,60 +174,15 @@ class WebhookService extends Service {
     }
     const template = this.getTemplateByPlatform('qywx');
     const pipeline = Mustache.render(template.pipeline, {
+      GB_pipelineId,GB_pipelineUrl,GB_statusColor,GB_statusString,ref,GB_sourceString,stages,
+      GB_duration: moment.duration(duration, 'seconds').humanize(),
       project,
-      user_name,
-      op,
-      branch,
-      total_commits_count,
-      commits,
+      user,
+      mr, 
+      commit,
+      builds,
     });
-
-    content.push(
-      `[[#${pipelineId}流水线](${pipelineUrl})] <font color="${GB_statusColor}">${GB_statusString}</font>，位于${ref}分支，由<font color="info">${GB_sourceString}</font>触发。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
-    content.push('**流水线详情：**\n');
-
-    name && content.push(this.generateListItem('操作人', `\`${name}\``));
-
-    duration &&
-      content.push(
-        this.generateListItem('总耗时', `${this.formatDuration(duration)}`)
-      );
-    !_.isEmpty(stages) &&
-      content.push(
-        this.generateListItem(
-          `共${stages.length}个阶段`,
-          `${stages.join(' / ')}`
-        )
-      );
-    !_.isEmpty(mr) &&
-      content.push(
-        this.generateListItem(
-          '合并详情',
-          `[${mr.title}](${mr.url})，\`${mr.source_branch}\`合并至\`${mr.target_branch}\``
-        )
-      );
-    !_.isEmpty(commit) &&
-      content.push(
-        this.generateListItem(
-          '提交详情',
-          `\n${commit.author.name}: [${S(
-            commit.message
-          ).collapseWhitespace()}](${commit.url})`
-        )
-      );
-    !_.isEmpty(builds) &&
-      content.push(
-        this.generateListItem(
-          `编译详情`,
-          `\n${this.formatBuilds(builds, username, web_url).join('\n')}`
-        )
-      );
-
-    return content;
+    return content.push(pipeline);
   }
 
   async assembleMergeMsg(content, { user, project, object_attributes }) {

@@ -49,26 +49,27 @@ module.exports = appInfo => {
       qywx: {
         push: 
 `\`{{user_name}}\` {{GB_op}} [[{{project.name}}/{{{branch}}}]({{{project.web_url}}}/tree/{{{branch}}})].
-{{#total_commits_count}}> **共提交\`{{total_commits_count}}\`次：**{{/total_commits_count}}
-
+{{#total_commits_count}}> **包含\`{{total_commits_count}}\`个提交：**{{/total_commits_count}}
 {{#commits}}
-> {{author.name}}: [{{title}}]({{{url}}})
-{{/commits}}`,
+> 》 \`{{author.name}}\`: [{{title}}]({{{url}}})
+{{/commits}}
+
+{{#project}}项目信息: [[{{name}} | {{namespace}}]({{web_url}})]{{/project}}
+`,
 
         pipeline: 
-`[[#{{pipelineId}}流水线]({{{pipelineUrl}}})] <font color="{{GB_statusColor}}">{{GB_statusString}}</font>，位于{{ref}}分支，由<font color="info">{{GB_sourceString}}</font>触发。
-> 项目 [[{{projName}} | {{namespace}}]({{web_url}})]
-> **流水线详情：**
-> 操作人: {{name}}
-> 总耗时: {{duration_formatted}}
-> 共{{stages.length}}个阶段: {{stages_string}}
-{{#mr}}> 合并详情: [{{title}}]({{url}})，\`{{source_branch}}\`合并至\`{{target_branch}}\`{{/mr}}
-{{#commit}}> 提交详情: {{author.name}}[{{message}}]({{{url}}}){{/commit}}
-{{#builds}}> 编译详情: {{/builds}}
-{{#builds}}
-> \`{{stage}}\`: [\`{{name}}\`]({{GB_buildUrl}}}) > <font color="{{GB_statusColor}}">{{GB_statusString}}</font>由\`{{name}}\`触发
+`[[#{{GB_pipelineId}}流水线]({{{GB_pipelineUrl}}})] <font color="{{GB_statusColor}}">{{GB_statusString}}</font>，位于\`{{ref}}\`分支，由\`{{GB_sourceString}}\`触发。
+> **流水线详情:**
+> 总耗时: {{GB_duration}}
+> 共{{stages.length}}个阶段: {{#stages}}{{.}} | {{/stages}}
+> 操作人: {{user.name}}
+{{#mr}}> **合并详情:** [{{title}}]({{url}}), \`{{source_branch}}\`合并至\`{{target_branch}}\`{{/mr}}
+{{#commit}}> **提交详情:** \`{{author.name}}\`: [{{message}}]({{{url}}}){{/commit}}
+> **编译详情**: 
+{{#builds}}> \`{{stage}}\`: [\`{{name}}\`]({{GB_buildUrl}}}) > <font color="{{GB_statusColor}}">{{GB_statusString}} </font> ({{user.name}}触发)
 {{/builds}}
 
+{{#project}}项目信息: [[{{name}} | {{namespace}}]({{web_url}})]{{/project}}
 `,
       },
     },
