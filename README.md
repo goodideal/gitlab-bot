@@ -1,6 +1,23 @@
 # Gitlab通知机器人
 
-将`Gitlab`的`push`、`tag push`、`merge request`和`pipeline`推送到企业微信的机器人。
+将`Gitlab`的`push`、`tag push`、`merge request`和`pipeline`推送到第三方IM平台的机器人，如企业微信、飞书等；
+
+`1.0.0`: 采用内置代码，且仅支持企业微信；
+
+`2.0.0`: 通过消息模板，可自行配置通知消息格式和字段，具体配置方式，参见[mustache官方文档](https://github.com/janl/mustache.js)
+
+todo:
+
+- [X] 使用mustache模板
+- [X] 增加note通知
+- [ ] 增加消息模板配置文件
+- [ ] 支持飞书机器人
+- [ ] 支持按天统计数据
+
+
+---
+
+### 功能展示
 
 具体见下图：
 
@@ -45,7 +62,7 @@ Gitlab pipeline 流水线
 
 则环境变量设为：
 ```
-WEBHOOK_URL_QYWX=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=ABCDEFG
+WEBHOOK_URL_PROJ=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=ABCDEFG
 ```
 
 一个应用可以添加多个推送组。

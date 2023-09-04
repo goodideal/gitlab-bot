@@ -3,9 +3,7 @@
   "rules": {
     "prettier/prettier": [
       "error"
-    ],
-    "arrow-body-style": "off",
-    "prefer-arrow-callback": "off"
+    ]
   },
   "extends": ["plugin:prettier/recommended", "eslint-config-egg"]
 }
