@@ -115,7 +115,7 @@ class WebhookService extends Service {
     const push = Mustache.render(template.push, {
       project,
       user_name,
-      op: GB_op,
+      GB_op,
       branch,
       total_commits_count,
       commits,
