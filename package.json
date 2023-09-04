@@ -1,29 +1,31 @@
 {
   "name": "gitlab-bot",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "private": true,
   "egg": {
     "declarations": true
   },
   "dependencies": {
-    "egg": "^2.15.1",
-    "egg-scripts": "^2.11.0",
-    "lodash": "^4.17.15",
-    "moment": "^2.24.0",
-    "string": "^3.3.3"
+    "egg": "^3.17.4",
+    "egg-scripts": "^2.17.0",
+    "moment": "^2.29.4",
+    "mustache": "^4.2.0"
   },
   "devDependencies": {
-    "autod": "^3.0.1",
+    "autod": "^3.1.2",
     "autod-egg": "^1.1.0",
-    "egg-bin": "^4.11.0",
-    "egg-ci": "^1.11.0",
-    "egg-mock": "^3.21.0",
-    "eslint": "^5.13.0",
-    "eslint-config-egg": "^7.1.0"
+    "egg-bin": "^6.4.2",
+    "egg-ci": "^2.2.0",
+    "egg-mock": "^5.10.8",
+    "eslint": "^8.48.0",
+    "eslint-config-egg": "^12.2.1",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "3.0.3"
   },
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=14.20.0"
   },
   "scripts": {
     "start": "egg-scripts start --title=egg-server-gitlab-bot",

@@ -1,6 +1,6 @@
 FROM library/node:lts-alpine
 
-# 设置时区
+# set timezone
 ENV TIME_ZONE=Asia/Shanghai
 
 RUN \
@@ -9,11 +9,10 @@ RUN \
 
 WORKDIR /app
 
-COPY package.json package-lock.json
+COPY package.json package.json
+COPY package-lock.json package-lock.json
 
-RUN \
-  npm config set registry https://registry.npmmirror.com/ \
-  && npm i --no-audit --no-fund --production
+RUN npm i --no-audit --no-fund --omit=dev
 
 EXPOSE 7001
 
