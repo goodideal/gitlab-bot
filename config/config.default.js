@@ -77,6 +77,14 @@ module.exports = appInfo => {
 > {{#object_attributes.last_commit}}》 {{author.name}}: [{{{title}}}]({{{url}}}){{/object_attributes.last_commit}}
 
 {{#project}}项目信息: [[{{name}} / {{namespace}}]({{{web_url}}})]{{/project}}
+`,
+        tag_push:
+`\`{{user_name}}\`{{GB_op}}标签 [[{{project.name}} | {{GB_tag}}]({{{web_url}}}/-/tags/{{GB_tag}})]。
+> 包含\`{{total_commits_count}}\`个提交, \`{{GB_changes.added}}\`新增 | \`{{GB_changes.modified}}\`修改 | \`{{GB_changes.removed}}\`删除
+{{#commits}}
+> 》 \`{{author.name}}\`: [{{{title}}}]({{{url}}})
+{{/commits}}
+
 `
       },
     },

@@ -215,45 +215,34 @@ class WebhookService extends Service {
     return content.push(merge_request);
   }
 
-  async assembleTagPushMsq(
-    content,
-    {
+  async assembleTagPushMsq(content,data) {
+    const {
       ref,
-      user_name,
-      project,
-      message,
       commits,
-      total_commits_count,
       before,
       after,
-    }
-  ) {
-    const { name: projName, web_url, path_with_namespace } = project || {};
+    }=data;
 
-    const tag = ref.replace('refs/tags/', '');
-    let op = '';
+    const GB_tag = ref.replace('refs/tags/', '');
+    let GB_op = '';
 
     if (before === '0000000000000000000000000000000000000000') {
       // new
-      op = '新增';
+      GB_op = '新增';
     } else if (after === '0000000000000000000000000000000000000000') {
       // remove
-      op = '删除';
+      GB_op = '删除';
     }
 
-    content.push(
-      `\`${user_name}\`${op}标签[[${path_with_namespace}/${tag}](${web_url}/-/tags/${tag})]。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
+    const template = this.getTemplateByPlatform('qywx');
+    const tag_push = Mustache.render(template.tag_push, {
+      ...data,
+      GB_tag,
+      GB_op,
+      GB_changes: this.formatCommits(commits).changes
+    });
 
-    message && content.push(this.generateListItem('说明', message));
-    total_commits_count &&
-      content.push(`**共提交${total_commits_count}次：**\n`);
-    total_commits_count &&
-      content.push(this.generateListItem('', this.formatCommits(commits).text));
-    return content;
+    return content.push(tag_push);
   }
 
   async assembleIssueMsq(
