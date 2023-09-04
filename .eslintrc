@@ -2,13 +2,10 @@
   "plugins": ["prettier"],
   "rules": {
     "prettier/prettier": [
-      "error",
-      {
-        "usePrettierrc": true
-      }
+      "error"
     ],
     "arrow-body-style": "off",
     "prefer-arrow-callback": "off"
   },
-  "extends": ["plugin:prettier/recommended"]
+  "extends": ["plugin:prettier/recommended", "eslint-config-egg"]
 }

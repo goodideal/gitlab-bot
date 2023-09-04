@@ -1,20 +1,23 @@
 'use strict';
 
 const Service = require('egg').Service;
-const _ = require('lodash');
-const S = require('string');
 const moment = require('moment');
 const Mustache = require('mustache');
 
+// set default lang
 moment.locale('zh-cn');
+
+// override default escape, remove \n and collapse whitespace
+Mustache.escape = text =>
+  text.toString().replace('\n', ' ').replace(/\s+/g, ' ');
 
 const OBJECT_KIND = {
   push: 'push',
   tag_push: 'tag_push',
-  issue: 'issue', //
-  note: 'note', // part to do
+  issue: 'issue',
+  note: 'note',
   merge_request: 'merge_request',
-  wiki_page: 'wiki_page', //
+  wiki_page: 'wiki_page',
   pipeline: 'pipeline',
   build: 'build', // todo
 };
@@ -85,16 +88,8 @@ class WebhookService extends Service {
     };
   }
 
-  async assemblePushMsg(content,data) {
-    const {
-      user_name,
-      ref,
-      project = {},
-      commits = {},
-      total_commits_count,
-      before,
-      after,
-    } = data;
+  async assemblePushMsg(content, data) {
+    const { ref, commits = {}, before, after } = data;
     const GB_branch = ref.replace('refs/heads/', '');
     let GB_op = '';
     if (before === '0000000000000000000000000000000000000000') {
@@ -117,29 +112,29 @@ class WebhookService extends Service {
       ...data,
       GB_op,
       GB_branch,
-      GB_changes: this.formatCommits(commits).changes
+      GB_changes: this.getChangesFromCommits(commits),
     });
 
     return content.push(push);
   }
 
-  async assemblePipelineMsg(content,data) {
-    const { object_attributes = {}, user = {}, project = {}, builds } = data
+  async assemblePipelineMsg(content, data) {
+    const { object_attributes = {}, user = {}, project = {}, builds } = data;
     const {
       id: GB_pipelineId,
       ref,
       status,
       duration,
-      source
+      source,
     } = object_attributes;
-    const { name} = user;
+    const { name } = user;
     const { web_url } = project;
     const GB_pipelineUrl = web_url + '/pipelines/' + GB_pipelineId;
 
     // find any build not finished (success, failed, skipped)
-    const createdBuilds = _.find(builds, { status: 'created' });
-    const runningBuilds = _.find(builds, { status: 'running' });
-    const pendingBuilds = _.find(builds, { status: 'pending' });
+    const createdBuilds = builds.find(o => o.status === 'created');
+    const runningBuilds = builds.find(o => o.status === 'running');
+    const pendingBuilds = builds.find(o => o.status === 'pending');
     this.logger.info('===> createdBuilds', createdBuilds);
     this.logger.info('===> runningBuilds', runningBuilds);
     this.logger.info('===> pendingBuilds', pendingBuilds);
@@ -149,7 +144,8 @@ class WebhookService extends Service {
       return false;
     }
 
-    const { statusColor: GB_statusColor, statusString: GB_statusString } = this.formatStatus(status);
+    const { statusColor: GB_statusColor, statusString: GB_statusString } =
+      this.formatStatus(status);
 
     let GB_sourceString;
     switch (source) {
@@ -169,15 +165,20 @@ class WebhookService extends Service {
     const template = this.getTemplateByPlatform('qywx');
     const pipeline = Mustache.render(template.pipeline, {
       ...data,
-      GB_pipelineId,GB_pipelineUrl,GB_statusColor,GB_statusString,ref,GB_sourceString,
-      GB_duration: moment.duration(duration, 'seconds').humanize()
+      GB_pipelineId,
+      GB_pipelineUrl,
+      GB_statusColor,
+      GB_statusString,
+      ref,
+      GB_sourceString,
+      GB_duration: moment.duration(duration, 'seconds').humanize(),
     });
     return content.push(pipeline);
   }
 
   async assembleMergeMsg(content, data) {
     const { object_attributes = {} } = data;
-    const {updated_at, state} = object_attributes;
+    const { updated_at, state } = object_attributes;
 
     let GB_stateString = '',
       GB_stateAction = '';
@@ -209,19 +210,14 @@ class WebhookService extends Service {
       ...data,
       GB_stateAction,
       GB_stateString,
-      GB_updated_at: moment(updated_at).format('MM-DD HH:mm')
+      GB_updated_at: moment(updated_at).format('MM-DD HH:mm'),
     });
 
     return content.push(merge_request);
   }
 
-  async assembleTagPushMsq(content,data) {
-    const {
-      ref,
-      commits,
-      before,
-      after,
-    }=data;
+  async assembleTagPushMsq(content, data) {
+    const { ref, commits, before, after } = data;
 
     const GB_tag = ref.replace('refs/tags/', '');
     let GB_op = '';
@@ -239,16 +235,17 @@ class WebhookService extends Service {
       ...data,
       GB_tag,
       GB_op,
-      GB_changes: this.formatCommits(commits).changes
+      GB_changes: this.getChangesFromCommits(commits),
     });
 
     return content.push(tag_push);
   }
 
-  async assembleIssueMsq(content,data) {
-    const {object_attributes = {}}=data;
-    const {state } = object_attributes;
-    const { statusColor: GB_statusColor, statusString: GB_statusString } = this.formatStatus(state);
+  async assembleIssueMsq(content, data) {
+    const { object_attributes = {} } = data;
+    const { state } = object_attributes;
+    const { statusColor: GB_statusColor, statusString: GB_statusString } =
+      this.formatStatus(state);
 
     const template = this.getTemplateByPlatform('qywx');
     const issue = Mustache.render(template.issue, {
@@ -259,8 +256,8 @@ class WebhookService extends Service {
     return content.push(issue);
   }
 
-  async assembleWikiPageMsq(content,data) {
-    const { object_attributes={} }=data;
+  async assembleWikiPageMsq(content, data) {
+    const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
     const template = this.getTemplateByPlatform('qywx');
@@ -272,73 +269,15 @@ class WebhookService extends Service {
   }
 
   async assembleNoteMsq(content, data) {
-    const { object_attributes } = data || {};
-    if (object_attributes) {
-      const { noteable_type } = object_attributes || {};
-      switch (noteable_type) {
-        case 'Issue':
-          return this.assembleIssueNoteMsq(content, data);
-          break;
-        default:
-          return false;
-          break;
-      }
-    } else {
-      return false;
-    }
-  }
+    const { object_attributes = {} } = data;
+    const { action } = object_attributes;
 
-  async assembleIssueNoteMsq(
-    content,
-    { user, project, object_attributes, issue }
-  ) {
-    const {
-      id: issueNoteId,
-      url: issueNoteUrl,
-      note,
-    } = object_attributes || {};
-    const { title, state, description } = issue || {};
-    const { name: projName, web_url, path_with_namespace } = project || {};
-    const { name, username } = user || {};
-
-    const { statusColor, statusString } = this.formatStatus(state);
-
-    content.push(
-      `[[#${issueNoteId}议题笔记](${issueNoteUrl})] 议题状态:<font color="${statusColor}">${statusString}</font>，所属议题:[${title}](${issueNoteUrl})，由<font color="info">${name}</font>触发。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
-
-    content.push('**议题笔记详情：**\n');
-
-    name && content.push(this.generateListItem('操作人', `\`${name}\``));
-
-    content.push(this.generateListItem('议题标题', title, issueNoteUrl));
-
-    let descriptios = [];
-
-    if (description) {
-      descriptios = description.split('\n');
-    }
-    content.push(this.generateListItem('议题描述', ' '));
-    for (let index = 0; index < descriptios.length; index++) {
-      const element = descriptios[index];
-      content.push(`> ${element}`);
-    }
-
-    let notes = [];
-
-    if (note) {
-      notes = note.split('\n');
-    }
-    content.push(this.generateListItem('笔记内容', ' '));
-    for (let index = 0; index < notes.length; index++) {
-      const element = notes[index];
-      content.push(`> ${element}`);
-    }
-
-    return content;
+    const template = this.getTemplateByPlatform('qywx');
+    const note = Mustache.render(template.note, {
+      ...data,
+      GB_action: this.formatAction(action),
+    });
+    return content.push(note);
   }
 
   formatStatus(status) {
@@ -390,13 +329,52 @@ class WebhookService extends Service {
     let actionColor = 'comment',
       actionString;
     switch (action) {
+      // Release
       case 'create':
         actionColor = 'info';
         actionString = '创建';
         break;
-      case 'cancel':
-        actionColor = 'warning';
-        actionString = '取消';
+      case 'update':
+        actionColor = 'info';
+        actionString = '更新';
+        break;
+      // Emoji
+      case 'award':
+        actionColor = 'info';
+        actionString = '授予';
+        break;
+      case 'revoke':
+        actionColor = 'info';
+        actionString = '回收';
+        break;
+      // Issue and Merge request
+      case 'open':
+        actionColor = 'info';
+        actionString = '打开';
+        break;
+      case 'close':
+        actionColor = 'info';
+        actionString = '关闭';
+        break;
+      case 'approved':
+        actionColor = 'info';
+        actionString = '已通过';
+        break;
+      case 'unapproved':
+        actionColor = 'info';
+        actionString = '未通过';
+        break;
+      case 'approval':
+        actionColor = 'info';
+        actionString = '批准';
+        break;
+      case 'unapproval':
+        actionColor = 'info';
+        actionString = '未批准';
+        break;
+      case 'merge':
+        actionColor = 'info';
+        actionString = '合并';
         break;
       default:
         actionString = `动作未知 (${action})`;
@@ -404,43 +382,17 @@ class WebhookService extends Service {
 
     return { actionColor, actionString };
   }
-  formatCommits(commits) {
+
+  getChangesFromCommits(commits) {
     const changes = { added: 0, modified: 0, removed: 0 };
-    const result = {
-      commits: commits.map(commit => {
-        const {
-          author,
-          message,
-          url,
-          added = {},
-          modified = {},
-          removed = {},
-        } = commit;
-        changes.added += added.length || 0;
-        changes.modified += modified.length || 0;
-        changes.removed += removed.length || 0;
+    commits.map(commit => {
+      const { added = [], modified = [], removed = [] } = commit;
+      changes.added += added.length || 0;
+      changes.modified += modified.length || 0;
+      changes.removed += removed.length || 0;
+    });
 
-        return `${author.name}: [${S(message).collapseWhitespace()}](${url})`;
-      }),
-      changes,
-    };
-
-    result.text =
-      `新增: \`${result.changes.added}\` ` +
-      `修改: \`${result.changes.modified}\` ` +
-      `删除: \`${result.changes.removed}\` \n ` +
-      result.commits.join('\n');
-
-    return result;
-  }
-
-  generateListItem(label, text, url) {
-    if (label) label = label + ':';
-    if (url) {
-      return `>${label} [${text}](${url})`;
-    } else {
-      return `>${label} ${text}`;
-    }
+    return changes;
   }
 
   getTemplateByPlatform(platform) {
