@@ -1,8 +1,7 @@
 'use strict';
 
-const S = require('string');
 const contextPath = process.env.CONTEXT_PATH || '/';
-const contextPathEndWithSlash = S(contextPath).endsWith('/')
+const contextPathEndWithSlash = contextPath.endsWith('/')
   ? contextPath
   : contextPath + '/';
 

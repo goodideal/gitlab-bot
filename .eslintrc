@@ -1,3 +1,9 @@
 {
-  "extends": "eslint-config-egg"
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": [
+      "error"
+    ]
+  },
+  "extends": ["plugin:prettier/recommended", "eslint-config-egg"]
 }
