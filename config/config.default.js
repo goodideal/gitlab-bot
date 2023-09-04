@@ -48,28 +48,25 @@ module.exports = appInfo => {
     template: {
       qywx: {
         push: 
-`\`{{user_name}}\` {{GB_op}} [[{{project.name}}/{{{branch}}}]({{{project.web_url}}}/tree/{{{branch}}})分支].
+`\`{{user_name}}\` {{GB_op}} [[{{project.name}} | {{GB_branch}}分支]({{project.web_url}}}/tree/{{GB_branch}})]
 > 包含\`{{total_commits_count}}\`个提交, \`{{GB_changes.added}}\`新增 | \`{{GB_changes.modified}}\`修改 | \`{{GB_changes.removed}}\`删除
 {{#commits}}
 > 》 \`{{author.name}}\`: [{{title}}]({{{url}}})
 {{/commits}}
 
-{{#project}}项目信息: [[{{name}} | {{namespace}}]({{web_url}})]{{/project}}
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}
 `,
 
         pipeline: 
-`[[#{{GB_pipelineId}}流水线]({{{GB_pipelineUrl}}})] <font color="{{GB_statusColor}}">{{GB_statusString}}</font>，位于\`{{ref}}\`分支，由\`{{GB_sourceString}}\`触发。
-> **流水线详情:**
-> 总耗时: {{GB_duration}}
-> 共{{stages.length}}个阶段: {{#stages}}{{.}} | {{/stages}}
-> 操作人: {{user.name}}
-{{#mr}}> **合并详情:** [{{title}}]({{url}}), \`{{source_branch}}\`合并至\`{{target_branch}}\`{{/mr}}
-{{#commit}}> **提交详情:** \`{{author.name}}\`: [{{message}}]({{{url}}}){{/commit}}
+`[[#{{GB_pipelineId}}流水线 | {{ref}}分支]({{{GB_pipelineUrl}}})] <font color="{{GB_statusColor}}">{{GB_statusString}}</font>，由\`{{user.name}}\`通过\`{{GB_sourceString}}\`触发。
+> **流水线详情:** 耗时\`{{GB_duration}}\`, {{stages.length}}个阶段 {{#stages}}{{.}} | {{/stages}}
+> {{#merge_request}}**合并详情:** [{{title}}]({{url}}), \`{{source_branch}}\`合并至\`{{target_branch}}\`{{/merge_request}}
+> {{#commit}}**提交详情:** \`{{author.name}}\`: [{{message}}]({{{url}}}){{/commit}}
 > **编译详情**: 
-{{#builds}}> \`{{stage}}\`: [\`{{name}}\`]({{GB_buildUrl}}}) > <font color="{{GB_statusColor}}">{{GB_statusString}} </font> ({{user.name}}触发)
+{{#builds}}> 》 [{{stage}} > \`{{name}}\` : <font color="{{GB_statusColor}}">{{GB_statusString}}</font> ({{user.name}})]({{GB_buildUrl}}})
 {{/builds}}
 
-{{#project}}项目信息: [[{{name}} | {{namespace}}]({{web_url}})]{{/project}}
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}
 `,
       },
     },

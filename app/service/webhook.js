@@ -97,7 +97,7 @@ class WebhookService extends Service {
       after,
     }
   ) {
-    const branch = ref.replace('refs/heads/', '');
+    const GB_branch = ref.replace('refs/heads/', '');
     let GB_op = '';
     if (before === '0000000000000000000000000000000000000000') {
       // new branch
@@ -119,7 +119,7 @@ class WebhookService extends Service {
       project,
       user_name,
       GB_op,
-      branch,
+      GB_branch,
       total_commits_count,
       commits,
       GB_changes: this.formatCommits(commits).changes
@@ -130,7 +130,7 @@ class WebhookService extends Service {
 
   async assemblePipelineMsg(
     content,
-    { object_attributes = {}, merge_request: mr, user = {}, project = {}, commit, builds }
+    { object_attributes = {}, merge_request, user = {}, project = {}, commit, builds }
   ) {
     const {
       id: GB_pipelineId,
@@ -140,8 +140,8 @@ class WebhookService extends Service {
       source,
       stages,
     } = object_attributes;
-    const { name: GB_projName, web_url, path_with_namespace } = project;
-    const { name, username } = user;
+    const { name} = user;
+    const { web_url } = project;
     const GB_pipelineUrl = web_url + '/pipelines/' + GB_pipelineId;
 
     // find any build not finished (success, failed, skipped)
@@ -180,7 +180,7 @@ class WebhookService extends Service {
       GB_duration: moment.duration(duration, 'seconds').humanize(),
       project,
       user,
-      mr, 
+      merge_request, 
       commit,
       builds,
     });
