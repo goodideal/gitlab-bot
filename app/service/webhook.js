@@ -85,9 +85,8 @@ class WebhookService extends Service {
     };
   }
 
-  async assemblePushMsg(
-    content,
-    {
+  async assemblePushMsg(content,data) {
+    const {
       user_name,
       ref,
       project = {},
@@ -95,8 +94,7 @@ class WebhookService extends Service {
       total_commits_count,
       before,
       after,
-    }
-  ) {
+    } = data;
     const GB_branch = ref.replace('refs/heads/', '');
     let GB_op = '';
     if (before === '0000000000000000000000000000000000000000') {
@@ -116,29 +114,23 @@ class WebhookService extends Service {
     this.logger.debug('content: ', content);
 
     const push = Mustache.render(template.push, {
-      project,
-      user_name,
+      ...data,
       GB_op,
       GB_branch,
-      total_commits_count,
-      commits,
       GB_changes: this.formatCommits(commits).changes
     });
 
     return content.push(push);
   }
 
-  async assemblePipelineMsg(
-    content,
-    { object_attributes = {}, merge_request, user = {}, project = {}, commit, builds }
-  ) {
+  async assemblePipelineMsg(content,data) {
+    const { object_attributes = {}, user = {}, project = {}, builds } = data
     const {
       id: GB_pipelineId,
       ref,
       status,
       duration,
-      source,
-      stages,
+      source
     } = object_attributes;
     const { name} = user;
     const { web_url } = project;
@@ -176,84 +168,51 @@ class WebhookService extends Service {
     }
     const template = this.getTemplateByPlatform('qywx');
     const pipeline = Mustache.render(template.pipeline, {
-      GB_pipelineId,GB_pipelineUrl,GB_statusColor,GB_statusString,ref,GB_sourceString,stages,
-      GB_duration: moment.duration(duration, 'seconds').humanize(),
-      project,
-      user,
-      merge_request, 
-      commit,
-      builds,
+      ...data,
+      GB_pipelineId,GB_pipelineUrl,GB_statusColor,GB_statusString,ref,GB_sourceString,
+      GB_duration: moment.duration(duration, 'seconds').humanize()
     });
     return content.push(pipeline);
   }
 
-  async assembleMergeMsg(content, { user, project, object_attributes }) {
-    const { name } = user || {};
-    const {
-      iid: mrId,
-      url: mrUrl,
-      target_branch,
-      source_branch,
-      state,
-      title,
-      description,
-      last_commit: commit,
-      updated_at,
-    } = object_attributes || {};
-    const { name: projName, web_url, path_with_namespace } = project || {};
+  async assembleMergeMsg(content, data) {
+    const { object_attributes = {} } = data;
+    const {updated_at, state} = object_attributes;
 
-    let stateString = '',
-      stateEnding = '';
+    let GB_stateString = '',
+      GB_stateAction = '';
     // opened, closed, locked, or merged
     switch (state) {
       case 'opened':
-        stateString = '开启了';
-        stateEnding = '，**请项目管理员确认**';
+        GB_stateString = '开启了';
+        GB_stateAction = '**请项目管理员确认**';
         break;
 
       case 'closed':
-        stateString = '取消了';
-        stateEnding = '，**请提交人仔细检查**';
+        GB_stateString = '取消了';
+        GB_stateAction = '**请提交人仔细检查**';
         break;
 
       case 'locked':
-        stateString = '锁定了';
+        GB_stateString = '锁定了';
         break;
 
       case 'merged':
-        stateString = '确认了';
+        GB_stateString = '确认了';
         break;
 
       default:
     }
 
-    content.push(
-      `\`${name}\`**${stateString}**[[#${mrId}合并请求 ${title}](${mrUrl})]，\`${source_branch}\`合并至\`${target_branch}\`${stateEnding}。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
-    content.push('**MR详情：**\n');
+    const template = this.getTemplateByPlatform('qywx');
+    const merge_request = Mustache.render(template.merge_request, {
+      ...data,
+      GB_stateAction,
+      GB_stateString,
+      GB_updated_at: moment(updated_at).format('MM-DD HH:mm')
+    });
 
-    updated_at &&
-      content.push(
-        this.generateListItem(
-          '提交时间',
-          moment(updated_at).format('MM-DD HH:mm')
-        )
-      );
-    description && content.push(this.generateListItem('合并详情', description));
-    !_.isEmpty(commit) &&
-      content.push(
-        this.generateListItem(
-          '提交详情',
-          `\n${commit.author.name}: [${S(
-            commit.message
-          ).collapseWhitespace()}](${commit.url})`
-        )
-      );
-
-    return content;
+    return content.push(merge_request);
   }
 
   async assembleTagPushMsq(

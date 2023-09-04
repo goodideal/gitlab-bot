@@ -48,26 +48,36 @@ module.exports = appInfo => {
     template: {
       qywx: {
         push: 
-`\`{{user_name}}\` {{GB_op}} [[{{project.name}} | {{GB_branch}}分支]({{project.web_url}}}/tree/{{GB_branch}})]
+`\`{{user_name}}\` {{GB_op}} [[{{project.name}} | {{GB_branch}}分支]({{{project.web_url}}}/tree/{{GB_branch}})]
 > 包含\`{{total_commits_count}}\`个提交, \`{{GB_changes.added}}\`新增 | \`{{GB_changes.modified}}\`修改 | \`{{GB_changes.removed}}\`删除
 {{#commits}}
-> 》 \`{{author.name}}\`: [{{title}}]({{{url}}})
+> 》 \`{{author.name}}\`: [{{{title}}}]({{{url}}})
 {{/commits}}
 
-{{#project}}项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{{web_url}}})]{{/project}}
 `,
 
         pipeline: 
 `[[#{{GB_pipelineId}}流水线 | {{ref}}分支]({{{GB_pipelineUrl}}})] <font color="{{GB_statusColor}}">{{GB_statusString}}</font>，由\`{{user.name}}\`通过\`{{GB_sourceString}}\`触发。
-> **流水线详情:** 耗时\`{{GB_duration}}\`, {{stages.length}}个阶段 {{#stages}}{{.}} | {{/stages}}
-> {{#merge_request}}**合并详情:** [{{title}}]({{url}}), \`{{source_branch}}\`合并至\`{{target_branch}}\`{{/merge_request}}
+> **流水线详情:** 耗时\`{{GB_duration}}\`, {{object_attributes.stages.length}}个阶段 {{#object_attributes.stages}}{{.}} | {{/object_attributes.stages}}
+> {{#merge_request}}**合并详情:** [{{title}}]({{{url}}}), \`{{source_branch}}\`合并至\`{{target_branch}}\`{{/merge_request}}
 > {{#commit}}**提交详情:** \`{{author.name}}\`: [{{message}}]({{{url}}}){{/commit}}
 > **编译详情**: 
 {{#builds}}> 》 [{{stage}} > \`{{name}}\` : <font color="{{GB_statusColor}}">{{GB_statusString}}</font> ({{user.name}})]({{GB_buildUrl}}})
 {{/builds}}
 
-{{#project}}项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{{web_url}}})]{{/project}}
 `,
+
+        merge_request:
+`{{GB_stateAction}} : \`{{user.name}}\`**{{GB_stateString}}{{#object_attributes}}**[[#{{iid}}合并请求 {{title}}]({{iid}})]，从\`{{source_branch}}\`合并至\`{{target_branch}}\`{{/object_attributes}}
+> **MR详情:**
+> 提交时间: {{GB_updated_at}}
+> 提交详情: 
+> {{#object_attributes.last_commit}}》 {{author.name}}: [{{{title}}}]({{{url}}}){{/object_attributes.last_commit}}
+
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{{web_url}}})]{{/project}}
+`
       },
     },
   };
