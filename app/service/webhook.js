@@ -245,104 +245,30 @@ class WebhookService extends Service {
     return content.push(tag_push);
   }
 
-  async assembleIssueMsq(
-    content,
-    {
-      user,
-      project,
-      repository,
-      object_attributes,
-      assignees = [],
-      assignee,
-      labels,
-    }
-  ) {
-    const {
-      id: issueId,
-      title,
-      state,
-      action,
-      description,
-      url: issueUrl,
-    } = object_attributes || {};
-    const { name: projName, web_url, path_with_namespace } = project || {};
-    const { name, username } = user || {};
+  async assembleIssueMsq(content,data) {
+    const {object_attributes = {}}=data;
+    const {state } = object_attributes;
+    const { statusColor: GB_statusColor, statusString: GB_statusString } = this.formatStatus(state);
 
-    const { statusColor, statusString } = this.formatStatus(state);
-
-    content.push(
-      `[[#${issueId}议题](${issueUrl})] 状态:<font color="${statusColor}">${statusString}</font>，由<font color="info">${name}</font>触发。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
-
-    content.push('**议题详情：**\n');
-
-    name && content.push(this.generateListItem('操作人', `\`${name}\``));
-
-    content.push(this.generateListItem('标题', title, issueUrl));
-
-    let descriptios = [];
-
-    if (description) {
-      descriptios = description.split('\n');
-    }
-    content.push(this.generateListItem('议题描述', ' '));
-    for (let index = 0; index < descriptios.length; index++) {
-      const element = descriptios[index];
-      content.push(`> ${element}`);
-    }
-
-    action && content.push(this.generateListItem('动作', `\`${action}\``));
-
-    let responsible = assignees.length > 0 ? assignees[0].name : '无';
-
-    content.push(this.generateListItem('责任人', `\`${responsible}\``));
-
-    let labelsStr = [];
-
-    if (labels) {
-      for (let index = 0; index < labels.length; index++) {
-        labelsStr.push(labels[index].title);
-      }
-    }
-
-    content.push(
-      this.generateListItem(
-        '标签',
-        '<font color="info">' + labelsStr.join(',') + '</font>'
-      )
-    );
-
-    return content;
+    const template = this.getTemplateByPlatform('qywx');
+    const issue = Mustache.render(template.issue, {
+      ...data,
+      GB_statusColor,
+      GB_statusString,
+    });
+    return content.push(issue);
   }
 
-  async assembleWikiPageMsq(
-    content,
-    { user, project, wiki, object_attributes }
-  ) {
-    const { name: projName, web_url, path_with_namespace } = project || {};
-    const { name, username } = user || {};
-    const { title, message, action, url: wiki_url } = object_attributes || {};
+  async assembleWikiPageMsq(content,data) {
+    const { object_attributes={} }=data;
+    const { action } = object_attributes;
 
-    content.push(
-      `[**WIKI**] [标题:${title}](${wiki_url})，由<font color="info">${name}</font>触发。`
-    );
-    content.push(
-      `> 项目 [[${projName} | ${path_with_namespace}](${web_url})]\n`
-    );
-
-    content.push('**WIKI详情：**\n');
-
-    name && content.push(this.generateListItem('操作人', `\`${name}\``));
-
-    content.push(this.generateListItem('标题', title, wiki_url));
-    content.push(this.generateListItem('信息', message || '无'));
-
-    action && content.push(this.generateListItem('动作', `\`${action}\``));
-
-    return content;
+    const template = this.getTemplateByPlatform('qywx');
+    const issue = Mustache.render(template.wiki, {
+      ...data,
+      GB_action: this.formatAction(action),
+    });
+    return content.push(issue);
   }
 
   async assembleNoteMsq(content, data) {
@@ -415,12 +341,6 @@ class WebhookService extends Service {
     return content;
   }
 
-  formatDescription(description) {
-    let descriptions = [];
-
-    return descriptions;
-  }
-
   formatStatus(status) {
     let statusColor = 'comment',
       statusString,
@@ -453,7 +373,7 @@ class WebhookService extends Service {
         break;
       case 'opened':
         statusColor = 'info';
-        statusString = '打开';
+        statusString = '开启';
         break;
       case 'closed':
         statusColor = 'info';
@@ -466,6 +386,24 @@ class WebhookService extends Service {
     return { statusColor, statusString };
   }
 
+  formatAction(action) {
+    let actionColor = 'comment',
+      actionString;
+    switch (action) {
+      case 'create':
+        actionColor = 'info';
+        actionString = '创建';
+        break;
+      case 'cancel':
+        actionColor = 'warning';
+        actionString = '取消';
+        break;
+      default:
+        actionString = `动作未知 (${action})`;
+    }
+
+    return { actionColor, actionString };
+  }
   formatCommits(commits) {
     const changes = { added: 0, modified: 0, removed: 0 };
     const result = {

@@ -84,7 +84,23 @@ module.exports = appInfo => {
 {{#commits}}
 > 》 \`{{author.name}}\`: [{{{title}}}]({{{url}}})
 {{/commits}}
+`,
+        issue:
+`\`{{user.name}}\`<font color="{{GB_statusColor}}">{{GB_statusString}}</font> {{#object_attributes}}[[#{{id}}议题]({{{url}}})]{{/object_attributes}}
+> **议题详情:**
+{{#object_attributes}}> 标题: [{{{title}}}]({{{url}}})
+> 描述: {{{description}}}
+> 动作: {{action}}{{/object_attributes}}
+> 责任人: {{#assignees}}\`{{name}}\`, {{/assignees}}
+> 标签: {{#labels}}<font color="info">{{title}}</font>, {{/labels}}
 
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{{web_url}}})]{{/project}}
+`,
+        wiki:
+`\`{{user.name}}\` {{#object_attributes}}<font color="{{GB_action.actionColor}}">{{GB_action.actionString}}</font> WIKI页 [{{{title}}}](url)
+> 内容: {{{content}}}{{/object_attributes}}
+
+{{#project}}项目信息: [[{{name}} / {{namespace}}]({{{web_url}}})]{{/project}}
 `
       },
     },
