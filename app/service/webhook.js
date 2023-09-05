@@ -120,32 +120,50 @@ class WebhookService extends Service {
 
   async assemblePipelineMsg(content, data) {
     const { object_attributes = {}, user = {}, project = {}, builds } = data;
-    const {
-      id: GB_pipelineId,
-      ref,
-      status,
-      duration,
-      source,
-    } = object_attributes;
+    const { id: GB_pipelineId, status, duration, source } = object_attributes;
     const { name } = user;
     const { web_url } = project;
     const GB_pipelineUrl = web_url + '/pipelines/' + GB_pipelineId;
+    const GB_builds = []; //{ stage: '', builds: [] }
+
+    builds.map(build => {
+      // add status color and string
+      build.GB_status = this.formatStatus(build.status);
+
+      // add tigger user and url
+      build.GB_user = build.user.name === name ? '' : build.user.name;
+      build.GB_url = web_url + '/-/jobs/' + build.id;
+
+      // format duration
+      build.GB_duration = build.duration
+        ? moment.duration(build.duration, 'seconds').humanize()
+        : null;
+
+      const stageBuilds = GB_builds.find(o => o.stage === build.stage);
+
+      if (stageBuilds) {
+        stageBuilds.builds.push(build);
+      } else {
+        GB_builds.push({
+          stage: build.stage,
+          builds: [build],
+        });
+      }
+    });
 
     // find any build not finished (success, failed, skipped)
-    const createdBuilds = builds.find(o => o.status === 'created');
-    const runningBuilds = builds.find(o => o.status === 'running');
-    const pendingBuilds = builds.find(o => o.status === 'pending');
-    this.logger.info('===> createdBuilds', createdBuilds);
-    this.logger.info('===> runningBuilds', runningBuilds);
-    this.logger.info('===> pendingBuilds', pendingBuilds);
+    const suppressBuilds = builds.find(
+      o =>
+        o.status === 'created' ||
+        o.status === 'running' ||
+        o.status === 'pending'
+    );
+    this.logger.info('===> suppressBuilds', suppressBuilds);
 
-    if (createdBuilds || runningBuilds || pendingBuilds) {
+    if (suppressBuilds) {
       // suppress msg
       return false;
     }
-
-    const { statusColor: GB_statusColor, statusString: GB_statusString } =
-      this.formatStatus(status);
 
     let GB_sourceString;
     switch (source) {
@@ -167,11 +185,10 @@ class WebhookService extends Service {
       ...data,
       GB_pipelineId,
       GB_pipelineUrl,
-      GB_statusColor,
-      GB_statusString,
-      ref,
+      GB_status: this.formatStatus(status),
       GB_sourceString,
       GB_duration: moment.duration(duration, 'seconds').humanize(),
+      GB_builds,
     });
     return content.push(pipeline);
   }
@@ -244,14 +261,11 @@ class WebhookService extends Service {
   async assembleIssueMsq(content, data) {
     const { object_attributes = {} } = data;
     const { state } = object_attributes;
-    const { statusColor: GB_statusColor, statusString: GB_statusString } =
-      this.formatStatus(state);
 
     const template = this.getTemplateByPlatform('qywx');
     const issue = Mustache.render(template.issue, {
       ...data,
-      GB_statusColor,
-      GB_statusString,
+      GB_state: this.formatStatus(state),
     });
     return content.push(issue);
   }
@@ -281,48 +295,48 @@ class WebhookService extends Service {
   }
 
   formatStatus(status) {
-    let statusColor = 'comment',
-      statusString,
+    let color = 'comment',
+      str,
       isNotify = true;
     switch (status) {
       case 'failed':
-        statusColor = 'warning';
-        statusString = '执行失败';
+        color = 'warning';
+        str = '执行失败';
         break;
       case 'success':
-        statusColor = 'info';
-        statusString = '执行成功';
+        color = 'info';
+        str = '执行成功';
         break;
       case 'running':
-        statusString = '运行中';
+        str = '运行中';
         break;
       case 'pending':
-        statusColor = 'warning';
-        statusString = '准备中';
+        color = 'warning';
+        str = '准备中';
         isNotify = false;
         break;
       case 'canceled':
-        statusString = '已取消';
+        str = '已取消';
         break;
       case 'skipped':
-        statusString = '已跳过';
+        str = '已跳过';
         break;
       case 'manual':
-        statusString = '需手动触发';
+        str = '需手动触发';
         break;
       case 'opened':
-        statusColor = 'info';
-        statusString = '开启';
+        color = 'info';
+        str = '开启';
         break;
       case 'closed':
-        statusColor = 'info';
-        statusString = '关闭';
+        color = 'info';
+        str = '关闭';
         break;
       default:
-        statusString = `状态未知 (${status})`;
+        str = `状态未知 (${status})`;
     }
 
-    return { statusColor, statusString };
+    return { color, str };
   }
 
   formatAction(action) {

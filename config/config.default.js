@@ -58,13 +58,15 @@ module.exports = appInfo => {
 `,
 
         pipeline: 
-`[[#{{GB_pipelineId}}流水线 | {{ref}}分支]({{GB_pipelineUrl}})] <font color="{{GB_statusColor}}">{{GB_statusString}}</font>，由\`{{user.name}}\`通过\`{{GB_sourceString}}\`触发。
+`[[#{{GB_pipelineId}}流水线 | {{object_attributes.ref}}分支]({{GB_pipelineUrl}})] <font color="{{GB_status.color}}">{{GB_status.str}}</font>，由\`{{user.name}}\`通过\`{{GB_sourceString}}\`触发。
 > **流水线详情:** 耗时\`{{GB_duration}}\`, {{object_attributes.stages.length}}个阶段 {{#object_attributes.stages}}{{.}} | {{/object_attributes.stages}}
 > {{#merge_request}}**合并详情:** [{{title}}]({{url}}), \`{{source_branch}}\`合并至\`{{target_branch}}\`{{/merge_request}}
 > {{#commit}}**提交详情:** \`{{author.name}}\`: [{{message}}]({{url}}){{/commit}}
 > **编译详情**: 
-{{#builds}}> 》 [{{stage}} /\`{{name}}\`-> <font color="{{GB_statusColor}}">{{GB_statusString}}</font> ({{user.name}})]({{GB_buildUrl}})
+{{#GB_builds}}> 》 \`{{stage}}\`: 
+{{#builds}}> - [\`{{name}}\`{{#GB_duration}} ({{GB_duration}}){{/GB_duration}} -> <font color="{{GB_status.color}}">{{GB_status.str}}</font> {{#GB_user}}({{GB_user}}){{/GB_user}}]({{GB_url}})
 {{/builds}}
+{{/GB_builds}}
 
 {{#project}}项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}
 `,
@@ -86,7 +88,7 @@ module.exports = appInfo => {
 {{/commits}}
 `,
         issue:
-`\`{{user.name}}\`<font color="{{GB_statusColor}}">{{GB_statusString}}</font> {{#object_attributes}}[[#{{id}}议题]({{url}})]{{/object_attributes}}
+`\`{{user.name}}\`<font color="{{GB_state.color}}">{{GB_state.str}}</font> {{#object_attributes}}[[#{{id}}议题]({{url}})]{{/object_attributes}}
 > **议题详情:**
 {{#object_attributes}}> 标题: [{{title}}]({{url}})
 > 描述: {{description}}
