@@ -49,7 +49,7 @@ module.exports = appInfo => {
     template: {
       qywx: {
         push: `\`{{user_name}}\` {{GB_op}} [[{{project.name}} | {{GB_branch}}分支]({{project.web_url}}/tree/{{GB_branch}})]
-> 包含\`{{total_commits_count}}\`个提交, \`{{GB_changes.added}}\`新增 | \`{{GB_changes.modified}}\`修改 | \`{{GB_changes.removed}}\`删除
+> 包含\`{{total_commits_count}}\`个提交, 新增\`{{GB_changes.added}}\` | 修改\`{{GB_changes.modified}}\` | 删除\`{{GB_changes.removed}}\`
 {{#commits}}
 > 》 \`{{author.name}}\`: [{{title}}]({{url}})
 {{/commits}}
