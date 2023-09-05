@@ -4,6 +4,8 @@ const Service = require('egg').Service;
 const moment = require('moment');
 const Mustache = require('mustache');
 
+const { OBJECT_KIND, X_GITLAB_EVENT, EVENT_TYPE } = require('../imports/const');
+
 // set default lang
 moment.locale('zh-cn');
 
@@ -11,59 +13,53 @@ moment.locale('zh-cn');
 Mustache.escape = text =>
   text.toString().replace('\n', ' ').replace(/\s+/g, ' ');
 
-const OBJECT_KIND = {
-  push: 'push',
-  tag_push: 'tag_push',
-  issue: 'issue',
-  note: 'note',
-  merge_request: 'merge_request',
-  wiki_page: 'wiki_page',
-  pipeline: 'pipeline',
-  build: 'build', // todo
-};
-
-const REDIS_KEY = {
-  pipeline: id => `gitlab.pipeline.${id}`,
-};
-
-const REDIS_VAL = {
-  pipeline: ({ pipelineId, stages, status, duration, builds }) => {
-    return {
-      type: 'pipeline',
-      id: pipelineId,
-      duration: duration,
-      durationMin: Math.round(duration / 60 - 0.5),
-      durationSec: duration % 60,
-      status: status,
-      stages: stages,
-      builds: builds,
-    };
-  },
-};
-
 // all customized variables start with GB_
 class WebhookService extends Service {
-  async translateMsg(data) {
-    const { object_kind } = data || {};
+  async translateMsg(data = {}, platform, gitlabEvent) {
+    this.platform = platform;
+
+    const { object_kind } = data;
+
+    const content = [];
+    switch (gitlabEvent) {
+      case X_GITLAB_EVENT.push:
+        this.pushHookHandler(content, data);
+        break;
+      case X_GITLAB_EVENT.system:
+        // system hook to push hook if object_kind exists
+        OBJECT_KIND[object_kind]
+          ? this.pushHookHandler(content, data)
+          : this.systemHookHandler(content, data);
+        break;
+      default:
+        // controller make sure not to here
+        break;
+    }
+
+    return {
+      msgtype: 'markdown',
+      markdown: { content: content.join(' \n  ') },
+    };
+  }
+
+  async pushHookHandler(content, data) {
+    const { object_kind } = data;
+
     if (!OBJECT_KIND[object_kind]) {
       return {};
     }
 
     let res = true;
-    const content = [];
     switch (object_kind) {
       case OBJECT_KIND.push:
         res = await this.assemblePushMsg(content, data);
         break;
-
       case OBJECT_KIND.pipeline:
         res = await this.assemblePipelineMsg(content, data);
         break;
-
       case OBJECT_KIND.merge_request:
         res = await this.assembleMergeMsg(content, data);
         break;
-
       case OBJECT_KIND.tag_push:
         res = await this.assembleTagPushMsq(content, data);
         break;
@@ -80,12 +76,36 @@ class WebhookService extends Service {
         res = false;
         break;
     }
-    if (!res) return false;
+    return res;
+  }
 
-    return {
-      msgtype: 'markdown',
-      markdown: { content: content.join(' \n  ') },
-    };
+  async systemHookHandler(content, data) {
+    const template = this.getTemplateByPlatform(this.platform);
+
+    const { event_name } = data;
+    if (!EVENT_TYPE[event_name]) {
+      const errMsg = `====> event_name "${event_name}" is not supported, suppressed}`;
+      this.logger.error(errMsg);
+      return false;
+    }
+
+    this.logger.debug('template: ', template.push);
+    this.logger.debug('content: ', content);
+    if (template[event_name]) {
+      // match template by event_name first
+      content.push(Mustache.render(template[event_name], data));
+    } else {
+      const event_arr = event_name.split('_');
+      const event_action = event_arr[0] + '_action';
+      if (!template[event_action]) {
+        const errMsg = `====> event_action "${event_action}" is not supported, suppressed}`;
+        this.logger.error(errMsg);
+        return false;
+      }
+      content.push(Mustache.render(template[event_action], data));
+    }
+
+    return content;
   }
 
   async assemblePushMsg(content, data) {
@@ -103,7 +123,7 @@ class WebhookService extends Service {
       GB_op = '将代码推至';
     }
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
 
     this.logger.debug('template: ', template.push);
     this.logger.debug('content: ', content);
@@ -120,32 +140,50 @@ class WebhookService extends Service {
 
   async assemblePipelineMsg(content, data) {
     const { object_attributes = {}, user = {}, project = {}, builds } = data;
-    const {
-      id: GB_pipelineId,
-      ref,
-      status,
-      duration,
-      source,
-    } = object_attributes;
+    const { id: GB_pipelineId, status, duration, source } = object_attributes;
     const { name } = user;
     const { web_url } = project;
     const GB_pipelineUrl = web_url + '/pipelines/' + GB_pipelineId;
+    const GB_builds = []; //{ stage: '', builds: [] }
+
+    builds.map(build => {
+      // add status color and string
+      build.GB_status = this.formatStatus(build.status);
+
+      // add tigger user and url
+      build.GB_user = build.user.name === name ? '' : build.user.name;
+      build.GB_url = web_url + '/-/jobs/' + build.id;
+
+      // format duration
+      build.GB_duration = build.duration
+        ? moment.duration(build.duration, 'seconds').humanize()
+        : null;
+
+      const stageBuilds = GB_builds.find(o => o.stage === build.stage);
+
+      if (stageBuilds) {
+        stageBuilds.builds.push(build);
+      } else {
+        GB_builds.push({
+          stage: build.stage,
+          builds: [build],
+        });
+      }
+    });
 
     // find any build not finished (success, failed, skipped)
-    const createdBuilds = builds.find(o => o.status === 'created');
-    const runningBuilds = builds.find(o => o.status === 'running');
-    const pendingBuilds = builds.find(o => o.status === 'pending');
-    this.logger.info('===> createdBuilds', createdBuilds);
-    this.logger.info('===> runningBuilds', runningBuilds);
-    this.logger.info('===> pendingBuilds', pendingBuilds);
+    const suppressBuilds = builds.find(
+      o =>
+        o.status === 'created' ||
+        o.status === 'running' ||
+        o.status === 'pending'
+    );
+    this.logger.info('===> suppressBuilds', suppressBuilds);
 
-    if (createdBuilds || runningBuilds || pendingBuilds) {
+    if (suppressBuilds) {
       // suppress msg
       return false;
     }
-
-    const { statusColor: GB_statusColor, statusString: GB_statusString } =
-      this.formatStatus(status);
 
     let GB_sourceString;
     switch (source) {
@@ -162,16 +200,15 @@ class WebhookService extends Service {
         // gitlab 11.3 未支持source参数
         GB_sourceString = `${name}`;
     }
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const pipeline = Mustache.render(template.pipeline, {
       ...data,
       GB_pipelineId,
       GB_pipelineUrl,
-      GB_statusColor,
-      GB_statusString,
-      ref,
+      GB_status: this.formatStatus(status),
       GB_sourceString,
       GB_duration: moment.duration(duration, 'seconds').humanize(),
+      GB_builds,
     });
     return content.push(pipeline);
   }
@@ -205,7 +242,7 @@ class WebhookService extends Service {
       default:
     }
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const merge_request = Mustache.render(template.merge_request, {
       ...data,
       GB_stateAction,
@@ -230,7 +267,7 @@ class WebhookService extends Service {
       GB_op = '删除';
     }
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const tag_push = Mustache.render(template.tag_push, {
       ...data,
       GB_tag,
@@ -244,14 +281,11 @@ class WebhookService extends Service {
   async assembleIssueMsq(content, data) {
     const { object_attributes = {} } = data;
     const { state } = object_attributes;
-    const { statusColor: GB_statusColor, statusString: GB_statusString } =
-      this.formatStatus(state);
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const issue = Mustache.render(template.issue, {
       ...data,
-      GB_statusColor,
-      GB_statusString,
+      GB_state: this.formatStatus(state),
     });
     return content.push(issue);
   }
@@ -260,7 +294,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const issue = Mustache.render(template.wiki, {
       ...data,
       GB_action: this.formatAction(action),
@@ -272,7 +306,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const note = Mustache.render(template.note, {
       ...data,
       GB_action: this.formatAction(action),
@@ -281,48 +315,48 @@ class WebhookService extends Service {
   }
 
   formatStatus(status) {
-    let statusColor = 'comment',
-      statusString,
+    let color = 'comment',
+      str,
       isNotify = true;
     switch (status) {
       case 'failed':
-        statusColor = 'warning';
-        statusString = '执行失败';
+        color = 'warning';
+        str = '执行失败';
         break;
       case 'success':
-        statusColor = 'info';
-        statusString = '执行成功';
+        color = 'info';
+        str = '执行成功';
         break;
       case 'running':
-        statusString = '运行中';
+        str = '运行中';
         break;
       case 'pending':
-        statusColor = 'warning';
-        statusString = '准备中';
+        color = 'warning';
+        str = '准备中';
         isNotify = false;
         break;
       case 'canceled':
-        statusString = '已取消';
+        str = '已取消';
         break;
       case 'skipped':
-        statusString = '已跳过';
+        str = '已跳过';
         break;
       case 'manual':
-        statusString = '需手动触发';
+        str = '需手动触发';
         break;
       case 'opened':
-        statusColor = 'info';
-        statusString = '开启';
+        color = 'info';
+        str = '开启';
         break;
       case 'closed':
-        statusColor = 'info';
-        statusString = '关闭';
+        color = 'info';
+        str = '关闭';
         break;
       default:
-        statusString = `状态未知 (${status})`;
+        str = `状态未知 (${status})`;
     }
 
-    return { statusColor, statusString };
+    return { color, str };
   }
 
   formatAction(action) {
