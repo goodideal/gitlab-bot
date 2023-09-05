@@ -64,7 +64,7 @@ module.exports = appInfo => {
 > {{#commit}}**提交详情:** \`{{author.name}}\`: [{{message}}]({{url}}){{/commit}}
 > **编译详情**: 
 {{#GB_builds}}> 》 \`{{stage}}\`: 
-{{#builds}}> - [\`{{name}}\`{{#GB_duration}} ({{GB_duration}}){{/GB_duration}} -> <font color="{{GB_status.color}}">{{GB_status.str}}</font> {{#GB_user}}({{GB_user}}){{/GB_user}}]({{GB_url}})
+{{#builds}}> - [\`{{name}}\`{{#GB_duration}} ({{GB_duration}}){{/GB_duration}} -> <font color="{{GB_status.color}}">{{GB_status.str}}{{#failure_reason}}, {{failure_reason}}{{/failure_reason}}</font> {{#GB_user}}({{GB_user}}){{/GB_user}}]({{GB_url}})
 {{/builds}}
 {{/GB_builds}}
 
