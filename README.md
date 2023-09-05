@@ -10,6 +10,7 @@ todo:
 
 - [X] 使用mustache模板
 - [X] 增加note通知
+- [X] 增加system hook通知，参考 [gitlab system hook](https://docs.gitlab.com/ee/administration/system_hooks.html)
 - [ ] 增加消息模板配置文件
 - [ ] 支持飞书机器人
 - [ ] 支持按天统计数据

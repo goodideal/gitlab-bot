@@ -4,6 +4,8 @@ const Service = require('egg').Service;
 const moment = require('moment');
 const Mustache = require('mustache');
 
+const { OBJECT_KIND, X_GITLAB_EVENT, EVENT_TYPE } = require('../imports/const');
+
 // set default lang
 moment.locale('zh-cn');
 
@@ -11,59 +13,53 @@ moment.locale('zh-cn');
 Mustache.escape = text =>
   text.toString().replace('\n', ' ').replace(/\s+/g, ' ');
 
-const OBJECT_KIND = {
-  push: 'push',
-  tag_push: 'tag_push',
-  issue: 'issue',
-  note: 'note',
-  merge_request: 'merge_request',
-  wiki_page: 'wiki_page',
-  pipeline: 'pipeline',
-  build: 'build', // todo
-};
-
-const REDIS_KEY = {
-  pipeline: id => `gitlab.pipeline.${id}`,
-};
-
-const REDIS_VAL = {
-  pipeline: ({ pipelineId, stages, status, duration, builds }) => {
-    return {
-      type: 'pipeline',
-      id: pipelineId,
-      duration: duration,
-      durationMin: Math.round(duration / 60 - 0.5),
-      durationSec: duration % 60,
-      status: status,
-      stages: stages,
-      builds: builds,
-    };
-  },
-};
-
 // all customized variables start with GB_
 class WebhookService extends Service {
-  async translateMsg(data) {
-    const { object_kind } = data || {};
+  async translateMsg(data = {}, platform, gitlabEvent) {
+    this.platform = platform;
+
+    const { object_kind } = data;
+
+    const content = [];
+    switch (gitlabEvent) {
+      case X_GITLAB_EVENT.push:
+        this.pushHookHandler(content, data);
+        break;
+      case X_GITLAB_EVENT.system:
+        // system hook to push hook if object_kind exists
+        OBJECT_KIND[object_kind]
+          ? this.pushHookHandler(content, data)
+          : this.systemHookHandler(content, data);
+        break;
+      default:
+        // controller make sure not to here
+        break;
+    }
+
+    return {
+      msgtype: 'markdown',
+      markdown: { content: content.join(' \n  ') },
+    };
+  }
+
+  async pushHookHandler(content, data) {
+    const { object_kind } = data;
+
     if (!OBJECT_KIND[object_kind]) {
       return {};
     }
 
     let res = true;
-    const content = [];
     switch (object_kind) {
       case OBJECT_KIND.push:
         res = await this.assemblePushMsg(content, data);
         break;
-
       case OBJECT_KIND.pipeline:
         res = await this.assemblePipelineMsg(content, data);
         break;
-
       case OBJECT_KIND.merge_request:
         res = await this.assembleMergeMsg(content, data);
         break;
-
       case OBJECT_KIND.tag_push:
         res = await this.assembleTagPushMsq(content, data);
         break;
@@ -80,12 +76,36 @@ class WebhookService extends Service {
         res = false;
         break;
     }
-    if (!res) return false;
+    return res;
+  }
 
-    return {
-      msgtype: 'markdown',
-      markdown: { content: content.join(' \n  ') },
-    };
+  async systemHookHandler(content, data) {
+    const template = this.getTemplateByPlatform(this.platform);
+
+    const { event_name } = data;
+    if (!EVENT_TYPE[event_name]) {
+      const errMsg = `====> event_name "${event_name}" is not supported, suppressed}`;
+      this.logger.error(errMsg);
+      return false;
+    }
+
+    this.logger.debug('template: ', template.push);
+    this.logger.debug('content: ', content);
+    if (template[event_name]) {
+      // match template by event_name first
+      content.push(Mustache.render(template[event_name], data));
+    } else {
+      const event_arr = event_name.split('_');
+      const event_action = event_arr[0] + '_action';
+      if (!template[event_action]) {
+        const errMsg = `====> event_action "${event_action}" is not supported, suppressed}`;
+        this.logger.error(errMsg);
+        return false;
+      }
+      content.push(Mustache.render(template[event_action], data));
+    }
+
+    return content;
   }
 
   async assemblePushMsg(content, data) {
@@ -103,7 +123,7 @@ class WebhookService extends Service {
       GB_op = '将代码推至';
     }
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
 
     this.logger.debug('template: ', template.push);
     this.logger.debug('content: ', content);
@@ -180,7 +200,7 @@ class WebhookService extends Service {
         // gitlab 11.3 未支持source参数
         GB_sourceString = `${name}`;
     }
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const pipeline = Mustache.render(template.pipeline, {
       ...data,
       GB_pipelineId,
@@ -222,7 +242,7 @@ class WebhookService extends Service {
       default:
     }
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const merge_request = Mustache.render(template.merge_request, {
       ...data,
       GB_stateAction,
@@ -247,7 +267,7 @@ class WebhookService extends Service {
       GB_op = '删除';
     }
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const tag_push = Mustache.render(template.tag_push, {
       ...data,
       GB_tag,
@@ -262,7 +282,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { state } = object_attributes;
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const issue = Mustache.render(template.issue, {
       ...data,
       GB_state: this.formatStatus(state),
@@ -274,7 +294,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const issue = Mustache.render(template.wiki, {
       ...data,
       GB_action: this.formatAction(action),
@@ -286,7 +306,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
-    const template = this.getTemplateByPlatform('qywx');
+    const template = this.getTemplateByPlatform(this.platform);
     const note = Mustache.render(template.note, {
       ...data,
       GB_action: this.formatAction(action),
