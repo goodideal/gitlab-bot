@@ -16,7 +16,29 @@ Mustache.escape = text =>
 // all customized variables start with GB_
 class WebhookService extends Service {
   async translateMsg(data = {}, platform, gitlabEvent) {
-    this.platform = platform;
+    const { template, response, color } = this.config;
+
+    // set templage, response, color code
+    if (!template[platform]) {
+      this.logger.error(`can't find ${platform} in template`);
+      this.template = template.default;
+    } else {
+      this.template = template[platform];
+    }
+
+    if (!response[platform]) {
+      this.logger.error(`can't find ${platform} in response`);
+      this.response = response.default;
+    } else {
+      this.response = response[platform];
+    }
+
+    if (!color[platform]) {
+      this.logger.error(`can't find ${platform} in color`);
+      this.color = color.default;
+    } else {
+      this.color = color[platform];
+    }
 
     const { object_kind } = data;
 
@@ -36,10 +58,9 @@ class WebhookService extends Service {
         break;
     }
 
-    return {
-      msgtype: 'markdown',
-      markdown: { content: content.join(' \n  ') },
-    };
+    const { path, body } = this.response;
+    this.setJsonValue(body, path, content.join());
+    return body;
   }
 
   async pushHookHandler(content, data) {
@@ -80,7 +101,7 @@ class WebhookService extends Service {
   }
 
   async systemHookHandler(content, data) {
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
 
     const { event_name } = data;
     if (!EVENT_TYPE[event_name]) {
@@ -123,7 +144,7 @@ class WebhookService extends Service {
       GB_op = '将代码推至';
     }
 
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
 
     this.logger.debug('template: ', template.push);
     this.logger.debug('content: ', content);
@@ -200,7 +221,7 @@ class WebhookService extends Service {
         // gitlab 11.3 未支持source参数
         GB_sourceString = `${name}`;
     }
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
     const pipeline = Mustache.render(template.pipeline, {
       ...data,
       GB_pipelineId,
@@ -242,7 +263,7 @@ class WebhookService extends Service {
       default:
     }
 
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
     const merge_request = Mustache.render(template.merge_request, {
       ...data,
       GB_stateAction,
@@ -267,7 +288,7 @@ class WebhookService extends Service {
       GB_op = '删除';
     }
 
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
     const tag_push = Mustache.render(template.tag_push, {
       ...data,
       GB_tag,
@@ -282,7 +303,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { state } = object_attributes;
 
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
     const issue = Mustache.render(template.issue, {
       ...data,
       GB_state: this.formatStatus(state),
@@ -294,7 +315,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
     const issue = Mustache.render(template.wiki, {
       ...data,
       GB_action: this.formatAction(action),
@@ -306,7 +327,7 @@ class WebhookService extends Service {
     const { object_attributes = {} } = data;
     const { action } = object_attributes;
 
-    const template = this.getTemplateByPlatform(this.platform);
+    const template = this.template;
     const note = Mustache.render(template.note, {
       ...data,
       GB_action: this.formatAction(action),
@@ -315,23 +336,23 @@ class WebhookService extends Service {
   }
 
   formatStatus(status) {
-    let color = 'comment',
+    let color = this.color.grey,
       str,
       isNotify = true;
     switch (status) {
       case 'failed':
-        color = 'warning';
+        color = this.color.red;
         str = '执行失败';
         break;
       case 'success':
-        color = 'info';
+        color = this.color.green;
         str = '执行成功';
         break;
       case 'running':
         str = '运行中';
         break;
       case 'pending':
-        color = 'warning';
+        color = this.color.red;
         str = '准备中';
         isNotify = false;
         break;
@@ -345,11 +366,10 @@ class WebhookService extends Service {
         str = '需手动触发';
         break;
       case 'opened':
-        color = 'info';
+        color = this.color.green;
         str = '开启';
         break;
       case 'closed':
-        color = 'info';
         str = '关闭';
         break;
       default:
@@ -429,15 +449,30 @@ class WebhookService extends Service {
     return changes;
   }
 
-  getTemplateByPlatform(platform) {
-    const { template } = this.config;
+  setJsonValue(obj, path, value) {
+    const keys = path.split('.');
+    let currentObj = obj;
 
-    if (!template[platform]) {
-      this.logger.error(`can't find ${platform} in template`);
-      return template.default;
+    for (let i = 0; i < keys.length - 1; i++) {
+      const key = keys[i];
+      if (!currentObj[key] || typeof currentObj[key] !== 'object') {
+        // 如果当前键不存在或不是一个对象，则创建一个新的空对象
+        currentObj[key] = {};
+      }
+      currentObj = currentObj[key];
     }
 
-    return template[platform];
+    const lastKey = keys[keys.length - 1];
+    if (Array.isArray(currentObj[lastKey])) {
+      // 如果路径的最后一部分是数组，根据指定的索引设置新值
+      const index = parseInt(lastKey, 10); // 将字符串索引转换为整数
+      if (!isNaN(index) && index >= 0) {
+        currentObj[lastKey][index] = value;
+      }
+    } else {
+      // 否则，设置新值
+      currentObj[lastKey] = value;
+    }
   }
 }
 
