@@ -1,0 +1,1 @@
+{"version":"2.1.0","name":"gitlab-bot","dependencies":{"egg-scripts":{"version":"2.17.0"},"egg":{"version":"3.17.4"},"moment":{"version":"2.29.4"},"mustache":{"version":"4.2.0"}}}
