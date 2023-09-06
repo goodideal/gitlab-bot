@@ -18,9 +18,7 @@ module.exports = appInfo => {
       enable: false,
     },
   };
-  config.logger = {
-    level: 'DEBUG',
-  };
+
   // add your middleware config here
   config.middleware = [];
 
@@ -115,9 +113,9 @@ module.exports = appInfo => {
 `,
         project_action: `{{owner_name}} 做了 \`{{event_name}}\` 操作
 > 项目路径：{{path_with_namespace}}`,
-//         repository_action: `{{user_name}} 做了 \`{{event_name}}\` 操作
-// {{#project}}> 项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}`,
-        user_action: '\`{{event_name}}\`: {{name}}({{username}} {{email}})',
+        //         repository_action: `{{user_name}} 做了 \`{{event_name}}\` 操作
+        // {{#project}}> 项目信息: [[{{name}} / {{namespace}}]({{web_url}})]{{/project}}`,
+        user_action: '`{{event_name}}`: {{name}}({{username}} {{email}})',
       },
     },
   };
