@@ -50,7 +50,7 @@ module.exports = appInfo => {
             header: {
               template: 'blue',
               title: {
-                content: 'Gitlab通知',
+                content: 'Gitlab机器人通知',
                 tag: 'plain_text',
               },
             },
