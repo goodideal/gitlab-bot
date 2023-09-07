@@ -16,7 +16,7 @@
 
 `1.0.0`: 采用内置代码，且仅支持企业微信；
 
-`2.0.0`: 通过消息模板，可自行配置通知消息格式和字段，具体配置方式，参见[mustache官方文档](https://github.com/janl/mustache.js)
+`2.x.x`: 通过消息模板，可自行配置通知消息格式和字段，具体配置方式，参见[mustache官方文档](https://github.com/janl/mustache.js)
 
 todo:
 
@@ -62,8 +62,10 @@ Gitlab pipeline 流水线
 
 ### 环境变量
 
-- `PLATFORM`：`qywx`, `feishu`，即：企业微信、飞书；
+
+- `PLATFORM`：`qywx | feishu`，默认为`qywx`，即：企业微信、飞书；
 - `WEBHOOK_URL_XXX`：机器人webhook地址，具体配置参考[应用部署运行](#应用部署运行)；
+- `SHOW_ORIGINAL`：`true | false`，默认为`false`，如果无模板，是否发送原消息体；
 
 ### 与企业微信对接
 
@@ -75,7 +77,8 @@ Gitlab pipeline 流水线
 
 ![alt gitlab-feishu](./docs/gitlab-feishu.png)
 
-webhook地址示例：https://open.feishu.cn/open-apis/bot/v2/hook/UUID
+
+飞书webhook地址示例：https://open.feishu.cn/open-apis/bot/v2/hook/UUID
 
 
 ## 应用部署运行

@@ -16,7 +16,9 @@ Mustache.escape = text =>
 // all customized variables start with GB_
 class WebhookService extends Service {
   async translateMsg(data = {}, platform, gitlabEvent) {
-    const { template, response, color } = this.config;
+    const { template, response, color, showOriginal } = this.config;
+
+    const isShowOriginal = process.env['SHOW_ORIGINAL'] || showOriginal;
 
     // set templage, response, color code
     if (!template[platform]) {
@@ -57,6 +59,9 @@ class WebhookService extends Service {
         // controller make sure not to here
         break;
     }
+
+    if (!content.length && isShowOriginal) content.push(JSON.stringify(data));
+    if (!content.length) return false;
 
     const { path, body } = this.response;
     this.setJsonValue(body, path, content.join());
