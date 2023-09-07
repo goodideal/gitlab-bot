@@ -16,7 +16,7 @@
 
 `1.0.0`: 采用内置代码，且仅支持企业微信；
 
-`2.0.0`: 通过消息模板，可自行配置通知消息格式和字段，具体配置方式，参见[mustache官方文档](https://github.com/janl/mustache.js)
+`2.x.x`: 通过消息模板，可自行配置通知消息格式和字段，具体配置方式，参见[mustache官方文档](https://github.com/janl/mustache.js)
 
 todo:
 
