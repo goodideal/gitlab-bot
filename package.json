@@ -28,8 +28,8 @@
     "node": ">=14.20.0"
   },
   "scripts": {
-    "start": "egg-scripts start --title=egg-server-gitlab-bot",
-    "stop": "egg-scripts stop --title=egg-server-gitlab-bot",
+    "start": "egg-scripts start --title=gitlab-bot",
+    "stop": "egg-scripts stop --title=gitlab-bot",
     "dev": "egg-bin dev",
     "debug": "egg-bin debug",
     "test": "npm run lint -- --fix && npm run test-local",
