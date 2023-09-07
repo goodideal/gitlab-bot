@@ -62,9 +62,9 @@ Gitlab pipeline 流水线
 
 ### 环境变量
 
-- `PLATFORM`：`qywx`, `feishu`，即：企业微信、飞书；
+- `PLATFORM`：`qywx | feishu`，默认为`qywx`，即：企业微信、飞书；
 - `WEBHOOK_URL_XXX`：机器人webhook地址，具体配置参考[应用部署运行](#应用部署运行)；
-
+- `SHOW_ORIGINAL`：`true | false`，默认为`false`，如果无模板，是否发送原消息体；
 ### 与企业微信对接
 
 如何添加群机器人可自行百度，[企业微信群机器人配置说明](https://work.weixin.qq.com/api/doc/90000/90136/91770)。
@@ -75,7 +75,7 @@ Gitlab pipeline 流水线
 
 ![alt gitlab-feishu](./docs/gitlab-feishu.png)
 
-webhook地址示例：https://open.feishu.cn/open-apis/bot/v2/hook/UUID
+飞书webhook地址示例：https://open.feishu.cn/open-apis/bot/v2/hook/UUID
 
 
 ## 应用部署运行
