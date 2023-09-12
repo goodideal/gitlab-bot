@@ -6,4 +6,8 @@ module.exports = {
   // static: {
   //   enable: true,
   // }
+  redis: {
+    enable: true,
+    package: 'egg-redis',
+  },
 };
