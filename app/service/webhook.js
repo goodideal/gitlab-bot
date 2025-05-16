@@ -55,6 +55,15 @@ class WebhookService extends Service {
           ? this.pushHookHandler(content, data)
           : this.systemHookHandler(content, data);
         break;
+      case X_GITLAB_EVENT.merge_request:
+      case X_GITLAB_EVENT.tag_push:
+      case X_GITLAB_EVENT.issue:
+      case X_GITLAB_EVENT.note:
+      case X_GITLAB_EVENT.pipeline:
+      case X_GITLAB_EVENT.wiki_page:
+        // 所有通过object_kind处理的事件都使用pushHookHandler
+        this.pushHookHandler(content, data);
+        break;
       default:
         // controller make sure not to here
         break;

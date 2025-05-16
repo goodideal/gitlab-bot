@@ -36,6 +36,12 @@ const EVENT_TYPE = {
 const X_GITLAB_EVENT = {
   push: 'Push Hook',
   system: 'System Hook',
+  merge_request: 'Merge Request Hook',
+  tag_push: 'Tag Push Hook',
+  issue: 'Issue Hook',
+  note: 'Note Hook',
+  pipeline: 'Pipeline Hook',
+  wiki_page: 'Wiki Page Hook'
 };
 
 module.exports = { OBJECT_KIND, EVENT_TYPE, X_GITLAB_EVENT };
