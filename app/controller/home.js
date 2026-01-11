@@ -44,7 +44,7 @@ class HomeController extends Controller {
     if (ctx.request.headers['x-gitlab-event']) {
       gitlabEvent = ctx.request.headers['x-gitlab-event'];
       if (Object.values(X_GITLAB_EVENT).indexOf(gitlabEvent) === -1) {
-        const errMsg = `====> x-gitlab-event "${gitlabEvent}" is not supported}`;
+        const errMsg = `====> x-gitlab-event "${gitlabEvent}" is not supported`;
         this.logger.error(errMsg);
         ctx.body = {
           error: errMsg,
